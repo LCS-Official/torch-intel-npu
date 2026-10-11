@@ -104,8 +104,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 14638,
-      "sha256": "b161597771caa69a189dd32645c80f5d725ceedc1935e9e100a6b83d090434f4"
+      "bytes": 14748,
+      "sha256": "2ef4ba7d0fda9fb1e9b38c5e4d0c5cdd9b8824e407bed5c7f8a1747d6a7e37d4"
     },
     {
       "path": "REFERENCES.md",
@@ -114,13 +114,13 @@
     },
     {
       "path": "RELEASE_NOTES.md",
-      "bytes": 2195,
-      "sha256": "2c173fd7dd0c2a77da1ab0d45ef8df7f78e72f3a8e42508a313e8e41f3bbe778"
+      "bytes": 2434,
+      "sha256": "337d4459eb01a971c6d99cf4c6b7662d77210e078349e05ea58bc99336cccd47"
     },
     {
       "path": "RELEASE_READINESS.md",
-      "bytes": 5143,
-      "sha256": "b99c4519fd9c6d65d6f614e48696432aa8a05589b9514adfcee1413553c0af50"
+      "bytes": 5556,
+      "sha256": "f254a68d962df34f5bbb324572124bf6892287d34f6f5ea95e74f7ef1914ec71"
     },
     {
       "path": "SOURCE_RELEASE_REPORT.md",

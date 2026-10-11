@@ -15,6 +15,8 @@
 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、驱动 `32.0.100.5540`、图编译器 `8.3`、
 Python 3.12、Torch 2.14.1+cpu。新 Conda 环境的宿主源码构建与真实设备冒烟已通过。
 最新发布回归见 [RELEASE_READINESS.md](RELEASE_READINESS.md)，逐项契约见 [COMPATIBILITY.md](COMPATIBILITY.md)。
+45 项离线检查已在本地 Git 克隆通过；GitHub 托管 CI 因账号侧 Actions 限制未能启动，
+不能将本次发布视作云端 CI 已通过。解除限制后可手动运行离线工作流，包含发布 manifest 校验。
 
 ## 使用前须知
 

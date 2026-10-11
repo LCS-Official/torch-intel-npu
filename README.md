@@ -7,6 +7,7 @@
 **当前版本：v0.1.0 Experimental Preview，更新于 2026-10-11。**
 已在本机完成独立 Conda 环境的宿主组件源码构建与真实 NPU 验证；
 发布状态见 [GitHub Releases](https://github.com/LCS-Official/torch-intel-npu/releases)。
+45 项离线检查已在本地 Git 克隆通过；GitHub 托管 CI 受账号侧 Actions 限制尚未执行。
 目前适合 NPU 算子与模型适配研究，尚未达到通用 CUDA/XPU 后端的兼容性。
 
 [安装说明](INSTALL.md) · [兼容性矩阵](COMPATIBILITY.md) · [性能实测](#性能实测) · [未来工作](#未来工作) · [来源与引用](REFERENCES.md)
