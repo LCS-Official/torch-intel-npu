@@ -1,0 +1,111 @@
+{
+  "checked_on": "2026-10-11",
+  "note": "Hashes identify files verified during source-release preparation. A newly checked revision is not evidence that it was the historical design input. Existing NPU compiler/ELF/driver design inputs are pinned in npunlock-probe/research/sources/manifest.json.",
+  "npu_extensions_revision": "ddbf8d65e2e22150e23efd383839aa80f84d4dac",
+  "level_zero_v1_17_revision": "5604d3963dec3c98d4e56ccf6fef0671a47114a2",
+  "openvino_nf4_revision": "8fb839633478574cefd28d49e25747d7c830b5a6",
+  "references": [
+    {
+      "id": "npunlock-license",
+      "url": "https://raw.githubusercontent.com/hsfzxjy/npunlock/bdf1c01d2caa2e772315a9b2a529981c2810e037/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "checked_on": "2026-10-11",
+      "matches_local": "npunlock/LICENSE",
+      "local_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "byte_identical": false
+    },
+    {
+      "id": "fp16-license",
+      "url": "https://raw.githubusercontent.com/Maratyszcza/FP16/782eea126dc5c755827be751a099eb01826175cf/LICENSE",
+      "sha256": "17e4f539024be2749ee729d1e2f01d24cef12ece8c9bf18e91a4349be29c80bf",
+      "bytes": 1157,
+      "checked_on": "2026-10-11",
+      "matches_local": "npunlock/tests/fixtures/npu4000/rmsnorm/FP16_LICENSE",
+      "local_sha256": "17e4f539024be2749ee729d1e2f01d24cef12ece8c9bf18e91a4349be29c80bf",
+      "byte_identical": true,
+      "license_file": "LICENSES/FP16.txt"
+    },
+    {
+      "id": "gptq-license",
+      "url": "https://raw.githubusercontent.com/IST-DASLab/gptq/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "checked_on": "2026-10-11",
+      "matches_local": "LICENSES/GPTQ.txt",
+      "local_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "byte_identical": true
+    },
+    {
+      "id": "gptq-source",
+      "url": "https://raw.githubusercontent.com/IST-DASLab/gptq/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/gptq.py",
+      "sha256": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+      "bytes": 5475,
+      "checked_on": "2026-10-11",
+      "matches_local": "npunlock-probe/research/results/w8-calibration/references/gptq.py",
+      "local_sha256": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+      "byte_identical": true
+    },
+    {
+      "id": "openvino-license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/8fb839633478574cefd28d49e25747d7c830b5a6/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "checked_on": "2026-10-11",
+      "license_file": "LICENSES/OpenVINO.txt"
+    },
+    {
+      "id": "openvino-nf4",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/8fb839633478574cefd28d49e25747d7c830b5a6/src/core/src/type/nf4.cpp",
+      "sha256": "94204adbe118eb1aa0924826bb7fda84ba3999c325f7db8d0040aad6886d6bc0",
+      "bytes": 3259,
+      "checked_on": "2026-10-11"
+    },
+    {
+      "id": "bitsandbytes-license",
+      "url": "https://raw.githubusercontent.com/bitsandbytes-foundation/bitsandbytes/c82f51c0f784d8a43ebcb9cdefbf94e3f3b9c6c3/LICENSE",
+      "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+      "bytes": 1086,
+      "checked_on": "2026-10-11",
+      "license_file": "LICENSES/bitsandbytes.txt"
+    },
+    {
+      "id": "level-zero-license",
+      "url": "https://raw.githubusercontent.com/oneapi-src/level-zero/5604d3963dec3c98d4e56ccf6fef0671a47114a2/LICENSE",
+      "sha256": "d0f94ca605360602ef6c6a6fa14b6c48790e9b99100c129e9ff96e8d6c7ee939",
+      "bytes": 1079,
+      "checked_on": "2026-10-11",
+      "license_file": "LICENSES/Level-Zero.txt"
+    },
+    {
+      "id": "level-zero-api",
+      "url": "https://raw.githubusercontent.com/oneapi-src/level-zero/5604d3963dec3c98d4e56ccf6fef0671a47114a2/include/ze_api.h",
+      "sha256": "448de0e4f0283fe91f79050c8058236a6205189126f2adf1e19c0eefa8d18fae",
+      "bytes": 780794,
+      "checked_on": "2026-10-11"
+    },
+    {
+      "id": "npu-extensions-license",
+      "url": "https://raw.githubusercontent.com/intel/level-zero-npu-extensions/ddbf8d65e2e22150e23efd383839aa80f84d4dac/LICENSE.txt",
+      "sha256": "26b4648e279bf9f4f7ea3e1f1c9948ccaf41a73727f13e01b766fd26ce288d98",
+      "bytes": 1079,
+      "checked_on": "2026-10-11",
+      "license_file": "LICENSES/Intel-NPU-Extensions.txt"
+    },
+    {
+      "id": "npu-extensions-graph",
+      "url": "https://raw.githubusercontent.com/intel/level-zero-npu-extensions/ddbf8d65e2e22150e23efd383839aa80f84d4dac/ze_graph_ext.h",
+      "sha256": "c211c0f089ee8e79f7146a7c7b90b4b460e8223159bda8c698a15c6da90bcc65",
+      "bytes": 65658,
+      "checked_on": "2026-10-11"
+    },
+    {
+      "id": "linux-npu-driver-license",
+      "url": "https://raw.githubusercontent.com/intel/linux-npu-driver/aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2/LICENSE.md",
+      "sha256": "451963b6682694730dbe4889fff2ef1c20def68992e2594880c15a28e6c87be5",
+      "bytes": 1079,
+      "checked_on": "2026-10-11",
+      "license_file": "LICENSES/Intel-Linux-NPU-Driver.txt"
+    }
+  ]
+}

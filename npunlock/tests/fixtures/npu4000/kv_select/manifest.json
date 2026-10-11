@@ -1,0 +1,27 @@
+{
+  "target": "4000xx",
+  "storage": "f16",
+  "operation": "kv_row_and_mask_select",
+  "source_sha256": {
+    "kv_select.c": "a268f1dc64e3ddbfef7eb91316538f674d94d024fcf537aa74d55a85004a544a"
+  },
+  "elf_sha256": "8988946b9a6a2ac014f99143f30cbf37c2d0e76eaa8e6457887e0f8a7a8b4807",
+  "assembly_sha256": "dbfda40b346e696656cf93cc756459b0cfae87dc94514eaa80b2996ec323d13b",
+  "text_bytes": 1984,
+  "compile_arguments": [
+    "moviCompile.dll",
+    "-cc1",
+    "-triple",
+    "shave",
+    "-target-cpu",
+    "4000xx",
+    "-S",
+    "-O2",
+    "-ffp-contract=off",
+    "-x",
+    "c",
+    "entry.c",
+    "-o",
+    "-"
+  ]
+}

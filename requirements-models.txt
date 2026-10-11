@@ -1,0 +1,4 @@
+# Optional checkpoint loading, tokenizer and Transformers reference/demo models.
+-r requirements.txt
+safetensors==0.8.0
+transformers==5.18.0

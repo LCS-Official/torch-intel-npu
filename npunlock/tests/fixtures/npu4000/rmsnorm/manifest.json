@@ -1,0 +1,16 @@
+{
+  "target": "4000xx",
+  "width": 576,
+  "epsilon": 1e-05,
+  "storage": "f16",
+  "arithmetic": "f32",
+  "source_sha256": {
+    "arithmetic.c": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+    "resident_activation.c": "38cfbdd4342df3d3992d9891696545dfaff1ad5fcbf49488878fcf41a83a146f",
+    "rmsnorm.c": "db19fbf778215c583090d402398dba1ca6fce67914c11c55fb8005d330eb7515"
+  },
+  "generated_source_sha256": "02e27ddd59e103149c991a38dce3a65aaba7db823b677aeb714a8f8bee5854f6",
+  "elf_sha256": "6c75489f4be7ba9e452c670a6b1fed994b748a1891970ef012a82b5bf6a93377",
+  "assembly_sha256": "f5990e1fe3641c3eb80d2a7fc048b0a7d5a38463229bd679b84f705599a07c59",
+  "text_bytes": 7120
+}

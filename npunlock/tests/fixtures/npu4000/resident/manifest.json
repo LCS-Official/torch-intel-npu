@@ -1,0 +1,45 @@
+{
+  "target": "4000xx",
+  "source_sha256": {
+    "arithmetic.c": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+    "resident_reduce.c": "dc68c74aa6a07be4157a1da36b0340ff1a0133b9858a3583057ad8e44aa6a18d",
+    "resident_activation.c": "38cfbdd4342df3d3992d9891696545dfaff1ad5fcbf49488878fcf41a83a146f"
+  },
+  "kernels": {
+    "sum": {
+      "elf_sha256": "94d6da306231325334d589e8e4f28ee93838bf35cbe9355b8cd0bf9aa569a539",
+      "elf_bytes": 4132,
+      "assembly_sha256": "90086d6136f37b368f797d268c006cf25db79c7081e07389db76123206c28d81"
+    },
+    "mean": {
+      "elf_sha256": "92f322da363452a4edae718c8378ec6da243f55d78e233ece0056fc804f9c86f",
+      "elf_bytes": 5556,
+      "assembly_sha256": "dfdaa627898087ab9b5b4bee21065bdac57998200268010c0d781ee5cdc3851e"
+    },
+    "relu-f16": {
+      "elf_sha256": "228189d9323b6d55563defee01493d6ea1b7abf9d7131590440faed7fe91d49e",
+      "elf_bytes": 988,
+      "assembly_sha256": "2ba0e19921d73ce7a42f5a1c1c908c3c8d553fca61f2085f02319c8dd6e3e521"
+    },
+    "relu-f32": {
+      "elf_sha256": "e4999621270152b1edc10360fba9d71c2f7728e25b31546f4441736f761dbd71",
+      "elf_bytes": 988,
+      "assembly_sha256": "6159c675145b47c9f6e338ac35db4974d57f83c6ece1fe95b3c77881e96bd0ef"
+    },
+    "relu_grad-f16": {
+      "elf_sha256": "4c40067fd62a7fb7759092690d1f3a8560fc2a1a5823f10526873faa443eff68",
+      "elf_bytes": 1052,
+      "assembly_sha256": "0cd0f608ca93970130b5c8aaf387c8110d4979da6c2b9babdbc4100438be041e"
+    },
+    "relu_grad-f32": {
+      "elf_sha256": "7926bb3f5b0c8f3da11ae6ae618ac1aae62fc4d4ae3726e80046f0784c00c2b6",
+      "elf_bytes": 1084,
+      "assembly_sha256": "a7701c6c76991636e7a02d6388474de25c49a1b3e1ef6335f4336c96f90be5ed"
+    },
+    "rsqrt-f32": {
+      "elf_sha256": "051afe611f908796f2dfb69ce8c2e143a8b17ae2d2dc74526d7fb489ace52681",
+      "elf_bytes": 2604,
+      "assembly_sha256": "2d6c5566b6b86088573b26ce90f76ddfd7a94b1a40fcb86cc3d3058a7a993ebc"
+    }
+  }
+}

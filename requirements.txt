@@ -1,0 +1,5 @@
+# Validated target: Windows x64, CPython 3.12, Intel NPU 8086:643e.
+# +cpu selects the CPU wheel; NPU execution is provided by this source backend.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu
+numpy==2.5.3

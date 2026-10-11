@@ -1,0 +1,38 @@
+Pytorch_xfire_NGPU experimental Intel NPU4000 PyTorch backend
+Copyright 2026 Pytorch_xfire_NGPU contributors
+
+This project includes a modified copy of hsfzxjy/npunlock, based on commit
+bdf1c01d2caa2e772315a9b2a529981c2810e037, licensed under Apache-2.0.
+The upstream license is retained in npunlock/LICENSE. Changes are described
+in UPSTREAM.md and the generated provenance/npunlock-upstream.json.
+This is an independent experimental project, not an official Intel,
+OpenVINO, PyTorch or npunlock release.
+
+The NF4 codebook in torch_npu_lowbit.py is reproduced from OpenVINO:
+Copyright (C) 2018-2026 Intel Corporation; Apache-2.0.
+OpenVINO identifies its NF4 logic as derived from bitsandbytes:
+Copyright (c) Facebook, Inc. and its affiliates.; MIT.
+Licenses are retained in LICENSES/OpenVINO.txt and LICENSES/bitsandbytes.txt.
+
+The CPU W8 calibration in torch_npu_lowbit.calibrate_int8 and
+npunlock-probe/research/w8_gptq_candidate.py adapts IST-DASLab/gptq
+(Apache-2.0); the original license is retained in LICENSES/GPTQ.txt.
+
+The SIMD FP16 conversion in npunlock/tests/fixtures/npu4000/rmsnorm.c
+adapts Maratyszcza/FP16 under the MIT License:
+Copyright (c) 2017 Facebook Inc.
+Copyright (c) 2017 Georgia Institute of Technology
+Copyright 2019 Google LLC
+The full license is retained in LICENSES/FP16.txt and next to the kernel
+at npunlock/tests/fixtures/npu4000/rmsnorm/FP16_LICENSE.
+
+Private Level Zero and NPU extension ABI declarations follow Intel headers:
+Copyright (C) 2019-2021 Intel Corporation (Level Zero).
+Additional copyrights and full MIT terms from the NPU extension headers are
+retained in LICENSES/Intel-NPU-Extensions.txt.
+NPU40XX firmware ABI definitions carry:
+Copyright (c) 2022-2026, Intel Corporation.; SPDX-License-Identifier: MIT.
+Full terms are retained in LICENSES/Intel-Firmware-Headers-MIT.txt.
+
+See THIRD_PARTY_NOTICES.md for affected files and modifications, and
+REFERENCES.md for design references, runtime dependencies and validation tools.

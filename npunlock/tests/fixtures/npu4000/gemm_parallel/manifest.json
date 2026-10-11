@@ -1,0 +1,45 @@
+{
+  "target": "4000xx",
+  "source_sha256": {
+    "arithmetic.c": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+    "square_gemm_parallel.c": "3c70a20c21cc5bacc73bb38c4f6c8251d36e549b36e352efc5b4364bce2dd29f"
+  },
+  "kernels": {
+    "square-f32-lanes1": {
+      "elf_sha256": "4362771aafa4e78aec2ed5e454d4d335c0d2f73f4cd4bb4a34ed7c11b9ad1fa0",
+      "elf_bytes": 7156,
+      "text_bytes": 6496,
+      "generated_source_sha256": "93de1163a6cedd231d602d3696d43bc97ee6dc004b22c1db3d0a12e90b0d4051",
+      "normal_ops_inline": false,
+      "output_lanes": 1,
+      "assembly_sha256": "dd56d9f4d3d419f751848fd62e90d9fe067ab88c5437045eba1fe62f80d0504c"
+    },
+    "square-f32-lanes4": {
+      "elf_sha256": "dc7e9d97143a721adae9c0c5ea4470ed3342efc24ae97d9b8a7aef6f2e84f4e4",
+      "elf_bytes": 8376,
+      "text_bytes": 7696,
+      "generated_source_sha256": "207efa84a4eb218f96bf3edc674b5737c102637ea9748445efaaa98b879eb4f9",
+      "normal_ops_inline": false,
+      "output_lanes": 4,
+      "assembly_sha256": "91008384e8c8714c9c47cd6d076ded1a3033de524e24358fe0d61561413d1198"
+    },
+    "square-f32-fast": {
+      "elf_sha256": "ae96b32bfdf1b863e883fe285a2d01966385ff2efdbd62d74b8de7305bd9a570",
+      "elf_bytes": 9172,
+      "text_bytes": 8464,
+      "generated_source_sha256": "9e299b517ebf0037099cd8c38c837b4ae28ae51848377d06d3bd4bf3ac20c828",
+      "normal_ops_inline": true,
+      "output_lanes": 4,
+      "assembly_sha256": "435ac0aef7a65ab7e8a0b4e7aff4f514a4f5ccd57377c821b3612fb3af7b51f6"
+    },
+    "square-f32-four-tiles": {
+      "elf_sha256": "0ccdb1568a61d9ac2dc1d3e1f7bc6c49ff962896543573aa874a3c153b0966c8",
+      "elf_bytes": 9252,
+      "text_bytes": 8544,
+      "generated_source_sha256": "289d6628b39f983c24a6af96be9c62b2898a60b5580a6ea6f63df0b55b6db545",
+      "normal_ops_inline": true,
+      "output_lanes": 4,
+      "assembly_sha256": "7ca3c5967c4e8d56b6201f11fc546925a061ccb6ef0b803e972800ab8abd74e9"
+    }
+  }
+}

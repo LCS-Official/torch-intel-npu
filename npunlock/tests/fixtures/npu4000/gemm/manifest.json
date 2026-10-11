@@ -1,0 +1,15 @@
+{
+  "target": "4000xx",
+  "source_sha256": {
+    "arithmetic.c": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+    "square_gemm.c": "9a0db331f83566f3e858f109d38cc22a264d6e3b2baf7267d3e3e1155049c2fb"
+  },
+  "kernels": {
+    "square-f32": {
+      "elf_sha256": "c10bb26b65541eadc61afee9236ea8b7121283efaa64a63a9b99c22e3d41c3e9",
+      "elf_bytes": 6980,
+      "text_bytes": 6320,
+      "assembly_sha256": "90568825b768c543c0b8024debeae0d80d2bf98a726b764c06b516b47f840ae5"
+    }
+  }
+}

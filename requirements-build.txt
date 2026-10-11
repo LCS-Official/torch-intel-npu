@@ -1,0 +1,4 @@
+# Build tools only; MSVC/Windows SDK and the C compiler remain system tools.
+-r requirements.txt
+cmake==4.4.4
+ninja==1.13.2

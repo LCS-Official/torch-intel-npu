@@ -1,0 +1,13 @@
+{
+  "source_sha256": {
+    "arithmetic.c": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+    "square_gemm_parallel.c": "3c70a20c21cc5bacc73bb38c4f6c8251d36e549b36e352efc5b4364bce2dd29f",
+    "rect_gemm.c": "27085db6e5ebb6d2a7825c83c11950327eee221b40ce8cb7201f32c9ac1edfeb"
+  },
+  "generated_source_sha256": "830a7522cfb6cdd16949b5daea1b8779da25b1c450c19d770ac8dd383b345800",
+  "elf_sha256": "1ae0313b31d6baef35cf415f100a28b5ebc8ae759e1cacdd922e651dd0983474",
+  "assembly_sha256": "c67943c615c688e100ee22c402a0998a1c4fb986309a2196365fd148cbc05008",
+  "text_bytes": 8240,
+  "target": "4000xx",
+  "shave_tasks": 8
+}

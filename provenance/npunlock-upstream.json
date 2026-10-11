@@ -1,0 +1,1248 @@
+{
+  "repository": "https://github.com/hsfzxjy/npunlock",
+  "base_commit": "bdf1c01d2caa2e772315a9b2a529981c2810e037",
+  "patch_scope": "Included changed text files only; kernel ELF companions are covered by hashes.",
+  "files": [
+    {
+      "path": ".clang-format",
+      "status": "line_endings_only",
+      "source_sha256": "9fdb0f945b43ee0cf81fdaa6775ad62bcacc8cc41f66c54423367d8078aacfb4",
+      "upstream_sha256": "cd8a82df29c203cb1a1152a7c425582d5feb688fed956769971fb8c8c99f23a6"
+    },
+    {
+      "path": ".gitignore",
+      "status": "line_endings_only",
+      "source_sha256": "4e701c60ccbe8a9b13d274aac282b9411075c2351b50c985e0ed3c141a63132c",
+      "upstream_sha256": "3a994497a0a590b90391e1b0c98df93a3824808834fd40bebc896d7ff0487f6c"
+    },
+    {
+      "path": "ABI/GRAPH_ELF.md",
+      "status": "line_endings_only",
+      "source_sha256": "97484847bd273981e446a953c1b02841c8dddb8d77b5924a9a8034138f3e86a5",
+      "upstream_sha256": "0977ec307be5ec6870b388cab118c36b222f44b7c895e3da4b4bd685c7a180da"
+    },
+    {
+      "path": "ABI/KERNEL_ELF.md",
+      "status": "line_endings_only",
+      "source_sha256": "0cc7524ad1c992d1f56ed142cf8a73d2da33ef94990c56e71cc16dcc1703d277",
+      "upstream_sha256": "cc65da6b9f8612f2b7c904fa1e29d61b899650c20ead396b3a8d6d56614487d0"
+    },
+    {
+      "path": "ABI/MLIBM_SYMBOLS.md",
+      "status": "line_endings_only",
+      "source_sha256": "c65c50e6934ed23872c247a5936df807ac394474c564f08843e591cd2cf5af95",
+      "upstream_sha256": "b8a8f1a6fee8afbc93c8a602b4ff3f6e4933b215c0605a5e23a30dc54607652b"
+    },
+    {
+      "path": "ABI/MOVITOOLS.md",
+      "status": "line_endings_only",
+      "source_sha256": "8c750e5615d48ca6ae322d1f9f256f4e89f1e80c4d98f5f6489e455bb3b0edaa",
+      "upstream_sha256": "7efb09350488edd8689520df2293c08f32f258d29d40f2b3f1d4a87bc02d7a94"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "status": "modified",
+      "source_sha256": "da4759cbb7d71641d5bcb65bdf0dc437f61a20b8ff037bb1c6dd840d4fe1725f",
+      "upstream_sha256": "71696f5ff1f7fa7edb4c6249ca4918f3866b7c3ebe75c454d062ad968bb8cc2e"
+    },
+    {
+      "path": "CMakePresets.json",
+      "status": "line_endings_only",
+      "source_sha256": "3c94682e0db4ab679ff3dc64885fff2bc9c1b0082233d27cbc774a94e516ac01",
+      "upstream_sha256": "c36696a4f489d674eff0f3d2cefa3223fe913afaeed282c614bdc8d73d842130"
+    },
+    {
+      "path": "LICENSE",
+      "status": "line_endings_only",
+      "source_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "upstream_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "MANIFEST.in",
+      "status": "line_endings_only",
+      "source_sha256": "bdcee3ae6b3d60684351b211d780979207733e60244a325190bf1866f4d5972a",
+      "upstream_sha256": "55e6ee4d0a7f5d5f31dc84df6dc938971f9adc8ed55a2fe453434cfa924b7c57"
+    },
+    {
+      "path": "README.md",
+      "status": "modified",
+      "source_sha256": "2e833bc102fbe455452018ab47b097c10248cadef023aa8eb1133dabe072e036",
+      "upstream_sha256": "78889c5ded005fa2e3ad9698ede242c721563168c022c0e93ca526e1fb44fea5"
+    },
+    {
+      "path": "cmake/default_linker_script.c.in",
+      "status": "line_endings_only",
+      "source_sha256": "3f3f85251b7281d7b6e5a0a645fb9eb10b4633bf605f72c775fb6e4512595e8b",
+      "upstream_sha256": "2c73fd8e0403d6415faf822e5291f22ad92b700e6e69a0b8442387968eb5c019"
+    },
+    {
+      "path": "cmake/npu3720_kernel_header.c.in",
+      "status": "line_endings_only",
+      "source_sha256": "6394c425cf106bebf8f43362992f4c850921bcaeee55b10b95183da41d98d268",
+      "upstream_sha256": "60f5cf8227c9f9c3458c121d5496a6b9bf73987707cde4197adb518305068d9a"
+    },
+    {
+      "path": "cmake/npunlockConfig.cmake.in",
+      "status": "line_endings_only",
+      "source_sha256": "432a77926e57dea3dc1920245d0f0ffa1aa189d4d69e5eeca9989e95de59422b",
+      "upstream_sha256": "51fe67ad6756eb9b493b7b9f21dd2a5844880723ed43acc2cf5a55c3fb1a60d3"
+    },
+    {
+      "path": "docs/C_API.md",
+      "status": "line_endings_only",
+      "source_sha256": "d29f0725c025e8ea34e28f6f803d51a0609056add7a46f8fac59de3008265fa9",
+      "upstream_sha256": "c4c055acc6c68a77e686decb4a32531d2a026c1a113487d09f8f3ef7a644112c"
+    },
+    {
+      "path": "docs/NPU4000.md",
+      "status": "added",
+      "source_sha256": "14ab145ea4f47d84cfcb899ed26461e6fa29fd71697d16272c1f421380f942ac",
+      "upstream_sha256": null
+    },
+    {
+      "path": "docs/npunlock-intro.svg",
+      "status": "line_endings_only",
+      "source_sha256": "56c08284bd518cbd87dbe80039695587fa8b90f5d706d17352be5315dceaf781",
+      "upstream_sha256": "eac7719cd4c32e8b8bd28e46322d1083b013c60a4bc3d6c6a1b3c2832abe742b"
+    },
+    {
+      "path": "examples/example_gelu.py",
+      "status": "line_endings_only",
+      "source_sha256": "4810168274b940c7c30cbc5d7bebe7e7b6485a4acfb7edee5c97ab78b6e56174",
+      "upstream_sha256": "5a27060004ebc6552dcc414b40a9f8a786b8a353bc2ee59dcc3b43f563f2dc83"
+    },
+    {
+      "path": "examples/example_gelu_f32.py",
+      "status": "line_endings_only",
+      "source_sha256": "63c394b8829b106c66a2a15bf53165f0294919935823cda7ee6b5b232be274c5",
+      "upstream_sha256": "b5c3ccfb2955c597f0c32b46ea93770c7b4eee24aeedd55116d1fb2613aca8e3"
+    },
+    {
+      "path": "examples/example_mixed_precision_multi_custom.py",
+      "status": "line_endings_only",
+      "source_sha256": "6c6d31aa1ca881167ae90a682547f9013dda0796dd90bbca7aef8f967b959750",
+      "upstream_sha256": "a27f679ced4dbb4a093fd0d3ed085d5b63416551def2b46a6242d59036f7b476"
+    },
+    {
+      "path": "examples/example_multilayer_multi_input.py",
+      "status": "line_endings_only",
+      "source_sha256": "fb4af90a42bd14da5a8c2e3c7915d4b7f7ba8cc6b6453ca82e3701ed6ae70121",
+      "upstream_sha256": "ebba7f8cbeb089b4c2563edb322b0fbef9a1596ca39cc96042631802368f7728"
+    },
+    {
+      "path": "include/npunlock/api.h",
+      "status": "line_endings_only",
+      "source_sha256": "64784d65b44275b7df678439817056351043f05b540ee6fb30509b6e93b357ea",
+      "upstream_sha256": "94ee5e0846ad8603f34d8652554c05a2764f4847cdcc5bb0fc810a4dd18501f3"
+    },
+    {
+      "path": "include/npunlock/buffer.h",
+      "status": "line_endings_only",
+      "source_sha256": "1f8cc8c0ef48d0411baf0140f76292e8e229761e28677871597e3880a51efc47",
+      "upstream_sha256": "1087bf18e18c5891a915edb541e3918c0f044a931914e2aaee8abcf34a1ee683"
+    },
+    {
+      "path": "include/npunlock/error.h",
+      "status": "line_endings_only",
+      "source_sha256": "e1e761b374afbd95c72a0d50593a85d7cf262bbf04ecc57d2345251bdc901e65",
+      "upstream_sha256": "15a18e14c720f20083a3b1d7205366df1ee98169a2fad03ea8ab32c4ecaeff87"
+    },
+    {
+      "path": "include/npunlock/graphinfer.h",
+      "status": "modified",
+      "source_sha256": "e8fc9ec727caa7e90e08ec98ad66f5acb29df2c55bc99e6343ada1354c21e3ef",
+      "upstream_sha256": "82bbef13b0645a0bcb802a80589e3ba08a39f5923a174d1203fd2027afc446b1"
+    },
+    {
+      "path": "include/npunlock/ir2blob.h",
+      "status": "line_endings_only",
+      "source_sha256": "c5c3c51c46520c0e64329331a09992caa3e3c65a0ab82cb9824915db53ffa319",
+      "upstream_sha256": "5600a8cf7308fa68cd52ae698f8f422c69fed27ecc00b5e63cebffddd65e0250"
+    },
+    {
+      "path": "include/npunlock/npu3720_kernel.h",
+      "status": "line_endings_only",
+      "source_sha256": "9f6fd5b98240bf9fb9ec39bde12c423d16a1bca99ccf25064a88a34282d3aa12",
+      "upstream_sha256": "387472833e6fc4c2abc9ada40a577bfa39e88742d34cdfed323c90cecfb80d67"
+    },
+    {
+      "path": "include/npunlock/patchblob.h",
+      "status": "line_endings_only",
+      "source_sha256": "f7f57dbf2ed788c1f43d0b6e086a14ba4b80ee5878ac952cb1878008d9cd0755",
+      "upstream_sha256": "9e2727cce74ebc642525fa6d75bbd7488e178d3664f9a711d5729135e2427b75"
+    },
+    {
+      "path": "include/npunlock/shavecc.h",
+      "status": "line_endings_only",
+      "source_sha256": "40b9604021de40ee4bcca5e6440490b5366cd28e8b8ce4afa4c7bfa3b5808bc1",
+      "upstream_sha256": "4ef493bf73827e3529a506925f2c8f1831c0ae142bec81baa3b4d78a347e6291"
+    },
+    {
+      "path": "include/npunlock/version.h",
+      "status": "line_endings_only",
+      "source_sha256": "78f40be02d9c517dcc86b18bfacf16151c6a2c48dfbdd3d1c4dbb9bad8cadf92",
+      "upstream_sha256": "353c9eb80d23b3d5c36bd2f7994a0c237db60eb8754e3203f355273891cc426e"
+    },
+    {
+      "path": "pyproject.toml",
+      "status": "line_endings_only",
+      "source_sha256": "5435ca8c38cf7ba2a4daeb226c245dd8da366440d0a2930691839e73ba9ccbca",
+      "upstream_sha256": "bc98f37ebf02e1787b37e98ee066357424015a4a141aa3bbaaaa2a75f3c2a453"
+    },
+    {
+      "path": "python/npunlock/__init__.py",
+      "status": "modified",
+      "source_sha256": "75762f30b4719cbc580b60d27990e8a29e659fce69fa44be2c2de0ad06ff0182",
+      "upstream_sha256": "2f6e67ef0c7da89b816fef9c8b34dced16d4bb89a829b69bedf137d8e13ab2f6"
+    },
+    {
+      "path": "python/npunlock/__init__.pyi",
+      "status": "modified",
+      "source_sha256": "e06af60bb3cbe17fa7bf29a670becb49824182518602494c87c02d3a7cdc971a",
+      "upstream_sha256": "350832ea0503b17ce0d3f64372043be1ef6b24d58f1a302435edf2594f9dec06"
+    },
+    {
+      "path": "python/npunlock/_bin/__init__.py",
+      "status": "line_endings_only",
+      "source_sha256": "bb86be19e6819355d66f210709a2382754e3e5ff686fcc7630192ce98efba0a2",
+      "upstream_sha256": "60026fec35c6539042de8ef4e4be37d171375782abe9224d632d93887cb95472"
+    },
+    {
+      "path": "python/npunlock/_native.py",
+      "status": "modified",
+      "source_sha256": "45697d60c28f396cb1996e3f67c97cbe18a30d436859e9f566062d0d417d8654",
+      "upstream_sha256": "243d216d0f302d95c439227bed0ddc8e509beac89129826b78e7e140818d6cd5"
+    },
+    {
+      "path": "python/npunlock/graph.py",
+      "status": "modified",
+      "source_sha256": "a0f6adeda2549cc94038603318a687bd0657b9d8c1f334a106cd0dbde34e2b80",
+      "upstream_sha256": "6f30c61b4f5af573b4fa4f3c0f473503fd5be219209eaef237cf8e5b122a40e0"
+    },
+    {
+      "path": "python/npunlock/ir.py",
+      "status": "modified",
+      "source_sha256": "3619c1a3dba2d48701fc9468f4bbb45d18a293f142ce6cfce7a2ebb024a9776f",
+      "upstream_sha256": "070bbf21636832823689ac065fd638bfd92ebc8c86d757e3c9f07fa49df11a35"
+    },
+    {
+      "path": "python/npunlock/npu4000.py",
+      "status": "added",
+      "source_sha256": "bacdcc0d857827c10de0009cdb60bb4cceef976ce3d8ce8133e57364b70649cd",
+      "upstream_sha256": null
+    },
+    {
+      "path": "python/npunlock/py.typed",
+      "status": "line_endings_only",
+      "source_sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "upstream_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "python/npunlock/tensor.py",
+      "status": "modified",
+      "source_sha256": "b6ad136d9f9ffb7655cca650ed553237af18a3bb76915fb2b904691ff74b4a2e",
+      "upstream_sha256": "9d74b95aae024f0fed2492acd8a8b2ee17bfbc50a67914c27cc37be6579c5dc9"
+    },
+    {
+      "path": "setup.py",
+      "status": "line_endings_only",
+      "source_sha256": "2b3093d240b80f7ee4bc9b542859c18c250f54ee3fbb625327b6a6f64bf0ed98",
+      "upstream_sha256": "c09fd740d999af8925cd56a90db4399242ac6268662fccf5314f8dbc98e88650"
+    },
+    {
+      "path": "src/common/buffer.c",
+      "status": "line_endings_only",
+      "source_sha256": "7d78900fbd394ce1cefbbff6fda0b5b3593523604817aeb79c7277d609738fbe",
+      "upstream_sha256": "04a9f4bf060027c44dc37859985b09fa7c64a7349fe91ecbd3e00177fb0c67ce"
+    },
+    {
+      "path": "src/common/checked.c",
+      "status": "line_endings_only",
+      "source_sha256": "912481f4d1eec69670e698fca30b3548c44551611649cb68b8bce7e598d705cc",
+      "upstream_sha256": "fc92c2f72936f2fa7b99046aaa53d9efba5832f8e2536248b26d52d45d6621f6"
+    },
+    {
+      "path": "src/common/diagnostic.c",
+      "status": "line_endings_only",
+      "source_sha256": "fac9f8207491048ac688ab935fd3c083e82840b457e0b5274ba2b27406b713da",
+      "upstream_sha256": "9e48fb85cf1efb8a4904bb49a806dcea5e9aa84fa0a3a27082b5cea105ba2f30"
+    },
+    {
+      "path": "src/common/elf32.c",
+      "status": "line_endings_only",
+      "source_sha256": "78428b271465a5327dc0a35ab7fb289ff956450a03f0e87f020100dce48ff21a",
+      "upstream_sha256": "c91c09f8b2a07f9e016d5eb006e134c6b576c9d2d902b4c1db54064d803868ea"
+    },
+    {
+      "path": "src/common/elf32.h",
+      "status": "line_endings_only",
+      "source_sha256": "c29149a9ad440ae47efcae7f47505e025c9c9699e7698187db04f059d0a9482c",
+      "upstream_sha256": "057091ea25651da0b7f01544eaf73befdfc3bdfbcf943d0d5cb9f9d8671bdd7d"
+    },
+    {
+      "path": "src/common/internal.h",
+      "status": "line_endings_only",
+      "source_sha256": "f9261926d16ad68f6796fc9ed912fa12289e3a2914974aa932c8466612ae0df5",
+      "upstream_sha256": "1f01f96825935066c6b2d2ac7ccbc6929382942f45491a9f60c590a7ceb0f838"
+    },
+    {
+      "path": "src/common/sha256.c",
+      "status": "line_endings_only",
+      "source_sha256": "72f3ea00d653865994fcba28ca3ad491bbed43fa1dc3b705af89980ee917740a",
+      "upstream_sha256": "f658821b4b3da910a94624f19d731e61bc6b5abe100b008a4865a5197873c121"
+    },
+    {
+      "path": "src/common/status.c",
+      "status": "line_endings_only",
+      "source_sha256": "116f5d430e15a2cb787df391b4c33220342c564f6bbb9551019ad8d2f7314bbd",
+      "upstream_sha256": "a34573a61c3d92cb52827e204f940e0177322f4609ff0f3d7de79158763ca88f"
+    },
+    {
+      "path": "src/common/worker_process.h",
+      "status": "line_endings_only",
+      "source_sha256": "96198b0869c0c41b70d0710eb13b29baa453ad2f92c2a590a4d9aefcbf909140",
+      "upstream_sha256": "d328eb849559bb6a47bea096d61454d4eccd475f5af44596daf0738c020b045f"
+    },
+    {
+      "path": "src/common/worker_process_posix.c",
+      "status": "line_endings_only",
+      "source_sha256": "19911ae070058538c5919a4c1d648be7cd839e7b672657fd6ce434e4820dec51",
+      "upstream_sha256": "bd558cd49f2c6317f811cb0d7b901d3ea0da3d49c76ee0a91324ab4490aab273"
+    },
+    {
+      "path": "src/common/worker_process_win32.c",
+      "status": "line_endings_only",
+      "source_sha256": "2197acbdcdab12f49b606a235fe9952f0fe45a9562868d4a014df3ac71afac6c",
+      "upstream_sha256": "b86654996ececd28fc44d9035b2ef4a5399b2d1f067b5e9bf8a6a6cd2bdffc04"
+    },
+    {
+      "path": "src/common/worker_protocol.h",
+      "status": "line_endings_only",
+      "source_sha256": "cb380dbdf243ff590a76d27ed40c4906159de0f929c498942886bf37bc2dc6c7",
+      "upstream_sha256": "8a4f0f8238b6e3e90f6e8045a75a572815a0d51651e3e6c020ff72121247e338"
+    },
+    {
+      "path": "src/graphinfer/graphinfer.c",
+      "status": "line_endings_only",
+      "source_sha256": "2f507ccaaecd32bb91bacc2e3d06eb0aec906ac9017a6bf7f67778242246666a",
+      "upstream_sha256": "ff5c615a66105b8594e9b20fa9c1f99f7d9ecf256e8bb0048fbc2167ad88df5c"
+    },
+    {
+      "path": "src/graphinfer/session_internal.h",
+      "status": "line_endings_only",
+      "source_sha256": "7ad5616917e1163a21c9ce7a1e305d94388be36a766d224a328639f8d986bd67",
+      "upstream_sha256": "6c42c9fb56e866ff68d62c050819dfcbcb27c5a752c6c1574ff2d25a233a854a"
+    },
+    {
+      "path": "src/graphinfer/session_win32.c",
+      "status": "modified",
+      "source_sha256": "2a12efb2b4d3b7444d9fd02fb271859fd1a5d5e5321d48a942cf263265c13615",
+      "upstream_sha256": "476c8b545af6882fe5bcfccc6539f2df2fc1885384da6a446fe6cf88b975fa1f"
+    },
+    {
+      "path": "src/ir2blob/ir2blob.c",
+      "status": "line_endings_only",
+      "source_sha256": "1159d3f8a2a7e1709348cdb9e6400f08591a306df64a32aeda03b1d35c519286",
+      "upstream_sha256": "6cf66b3e0b763e8db9aade5a2955fffebedb5fc481062598c61fbef69323f02c"
+    },
+    {
+      "path": "src/ir2blob/ir_worker.h",
+      "status": "line_endings_only",
+      "source_sha256": "5567386eb8952d47a882b4659db0d8f51eb25873b8f178cba9e95c5840105a0c",
+      "upstream_sha256": "5f16603c1adc6abbbfa7dc2197ae25bb3695aa380e24bab37adfb1f9df45b5ea"
+    },
+    {
+      "path": "src/ir2blob/ir_worker_win32.c",
+      "status": "line_endings_only",
+      "source_sha256": "a47eca9f8fee024a5a28bbf7c5bdd1b900c771886cc9825c1dfc4c05e3bb52fd",
+      "upstream_sha256": "c01f1917778426d8971be3561154bfa581dd9ba958dbae900b4fd40aa1a4ff92"
+    },
+    {
+      "path": "src/linux_probe/infer_engine.c",
+      "status": "line_endings_only",
+      "source_sha256": "d328022385a5b3bd1d064c07534a2c1f1cd4e7be9cce6d7d4a11b6e33c192dca",
+      "upstream_sha256": "ad95108798bbec11bd15b25deb9797a547e6c103f397d81532c03920de716da4"
+    },
+    {
+      "path": "src/linux_probe/infer_engine.h",
+      "status": "line_endings_only",
+      "source_sha256": "ae9e9584dd3d0894218d4b230543bd0856e05820f32476491d9a8fc64bf6a00d",
+      "upstream_sha256": "abb3afa01883eccdcf8b8c7a057119a73e163036cabb89dfb9560aacbcf8b23d"
+    },
+    {
+      "path": "src/linux_probe/main.c",
+      "status": "line_endings_only",
+      "source_sha256": "12aa84fb0ecddb9255b30698e54d81239d3d09134f055c61213e8e0c20ba1099",
+      "upstream_sha256": "382a2ff1c8ae8a6129dcfc94260ba28e18457f46ac85b9b0a6894f7795f33acb"
+    },
+    {
+      "path": "src/npunlock_inspect/main.c",
+      "status": "line_endings_only",
+      "source_sha256": "e4645b7cf21fc6183fbfc7d9220148e851cc92e0960b4b6d4fe7605c6c2a574d",
+      "upstream_sha256": "61ba5a5a12b30de6a22b24426c321bf7bf6ca3db3eeb097ba94592ef3639b313"
+    },
+    {
+      "path": "src/npurun/main.c",
+      "status": "line_endings_only",
+      "source_sha256": "e225cc77595bc0bf89559a313ca758bccbcd5a5cbfd000b6a39cf2148b730ec6",
+      "upstream_sha256": "e470a952fa4e96cc302f8043478ff197ba58b3f43d72bd431bea99b98fa370b0"
+    },
+    {
+      "path": "src/patchblob/graph_blob.c",
+      "status": "line_endings_only",
+      "source_sha256": "6e09500b3a6dcaf81ce6ae68639c70e46bd77f2bee4588f21d4363faabf9deb4",
+      "upstream_sha256": "b2fc5e4b078bd38a818e6f0d6599399b8e94f42dcfb55a8eb35517a6bd9a72c1"
+    },
+    {
+      "path": "src/patchblob/graph_blob.h",
+      "status": "line_endings_only",
+      "source_sha256": "bc3739338e4cd4daef3dac65095b87d9b909fe77d9b2a918b7e8c7db94fbf3e4",
+      "upstream_sha256": "7db6208bfafc38d8d4a093c05779a4de9b50374644c1c829b97b9d2190fcb498"
+    },
+    {
+      "path": "src/patchblob/patchblob.c",
+      "status": "line_endings_only",
+      "source_sha256": "573e9f39209eb355dd7eb0e1ef0f141746a64be94656fcb7116fa8a0946340e0",
+      "upstream_sha256": "62fc3dd1dddb6b50da164a75a7c1ab117d2ecd4eee75c495eaa2f0cdef11fec9"
+    },
+    {
+      "path": "src/shavecc/movi_stage.h",
+      "status": "line_endings_only",
+      "source_sha256": "76fc2cfcea6648c84044ac8db164a7b4e738cb748773c7793ae6931c19f4f822",
+      "upstream_sha256": "e8d8cf84aa2d61f10ee81328e13ccd8a2aecc27c3addac282c8b5838f87bbc54"
+    },
+    {
+      "path": "src/shavecc/movi_stage_win32.c",
+      "status": "line_endings_only",
+      "source_sha256": "08306744632df3ad8d0e7f99d35ce46eb052faea970334d0213782500e74ae88",
+      "upstream_sha256": "c5801b49b5b8076cc1d6ce19e6990be96db6032632786c923d8fdd79062fbfef"
+    },
+    {
+      "path": "src/shavecc/shave_kernel.ld",
+      "status": "line_endings_only",
+      "source_sha256": "0d83da8af05431f32abe533100fca85dc2a0d6e9e96786ccacb378eb79a3de58",
+      "upstream_sha256": "4b7faf5233e425c6d75a63b18d7f8ea7e06b3b023cbf3b39731de64294f975da"
+    },
+    {
+      "path": "src/shavecc/shavecc.c",
+      "status": "line_endings_only",
+      "source_sha256": "648abc69a6df7193e98f8eff506699daea63b9eea4cbc42a015e1ff7435ffcb1",
+      "upstream_sha256": "29a809061c94ac4e8491f9fcd9eaf401223cc302c33d83bb94d78ca48445ada8"
+    },
+    {
+      "path": "src/workers/ir_protocol.h",
+      "status": "line_endings_only",
+      "source_sha256": "8ed857cf0f78dc93e2df216efc9a2476a6bf9262133720751face7f5ebaba7f1",
+      "upstream_sha256": "6176e596e90180fe7cfb5e8708a17b27da80e20697d412772ba6a06bcfdf7b63"
+    },
+    {
+      "path": "src/workers/ir_worker.c",
+      "status": "line_endings_only",
+      "source_sha256": "710ab2feaf7c8a509950c01d89d4f93fd1b99f2dcfff69e964f52bf9172b95b2",
+      "upstream_sha256": "ea45f252e2c98e4c0c0c4bb91efdb45b83e6cfc7a60f9bab9e5babb1186d19d6"
+    },
+    {
+      "path": "src/workers/level_zero_min.h",
+      "status": "modified",
+      "source_sha256": "c11e3525610ce450a0f67c2648b5fc7b5155bde56ce58b5a716fdbac8a1ff22c",
+      "upstream_sha256": "66ffa292b1600332be3e62caef700b9283f7389c62b65ac419141e0feda5080a"
+    },
+    {
+      "path": "src/workers/movi_protocol.h",
+      "status": "line_endings_only",
+      "source_sha256": "c758dbcf47268b6fd786c756a42b8dfbb8f66d834bee4efece65f5bd0576eb1b",
+      "upstream_sha256": "e4077ecbd8d24679bd261f75d7394e7fa796854f6d76e02569a5287acb320b45"
+    },
+    {
+      "path": "src/workers/movi_worker.c",
+      "status": "line_endings_only",
+      "source_sha256": "c444e72738c3fadc57cd3dbcbc7ce28d85720de14d6db52c1fcf7cbe483af07b",
+      "upstream_sha256": "77c9bee42c848880c41506fc18f8f7b22f59d07b29ffdaf143d8d3bb61495ed1"
+    },
+    {
+      "path": "src/workers/worker.c",
+      "status": "line_endings_only",
+      "source_sha256": "56a0bfeebf907b2335c32a9fbdd50ab1909861b1a61d577fa03df4f6fca28a46",
+      "upstream_sha256": "e7454cb27ae355df25dd6ef142da1c06cb1945a6151bb8f6317657513ab3052f"
+    },
+    {
+      "path": "src/workers/worker_entry.h",
+      "status": "line_endings_only",
+      "source_sha256": "1691219736b386841cb43179a317054f16d6b4bf0e5cc3b7307f97e252b93b2e",
+      "upstream_sha256": "07f24b13ab663907e5ff868ede25c78548d1e31625a18497b3b1dee3ceff8c16"
+    },
+    {
+      "path": "src/workers/worker_io.c",
+      "status": "line_endings_only",
+      "source_sha256": "cdccc43a0aef1808993b6ad17556c42ded949dc4aaf74eaa4d8963d168494c7c",
+      "upstream_sha256": "68ec2a23bd662eddaefc05e2797cd86d85ea26fbc7617567414f5247a270c9c6"
+    },
+    {
+      "path": "src/workers/worker_io.h",
+      "status": "line_endings_only",
+      "source_sha256": "6f0ac272deaf412cceb41cff31993a6445f4f9d58794026d7f52d34d891ef59a",
+      "upstream_sha256": "bfd26da3199c2c946ba5885fcce3ae29584d82acff86c66313888c04bfbbafbb"
+    },
+    {
+      "path": "tests/fixtures/README.md",
+      "status": "line_endings_only",
+      "source_sha256": "0135479544c15e3ab2aab4e6c26a636dc838a825d9b342b14ba38c23720969f2",
+      "upstream_sha256": "2433e43e80aef5e902cecff9ffe37113d021c6f8d511efd400d3e71d8ca8ca01"
+    },
+    {
+      "path": "tests/fixtures/npu3720/abs.xml",
+      "status": "unchanged",
+      "source_sha256": "02be7ab43b45c3ab80e11adf796f3c31e17c9d6c95e8748e74cce888f80c9a31",
+      "upstream_sha256": "02be7ab43b45c3ab80e11adf796f3c31e17c9d6c95e8748e74cce888f80c9a31"
+    },
+    {
+      "path": "tests/fixtures/npu3720/add1-fp16.c",
+      "status": "line_endings_only",
+      "source_sha256": "01cbde21da788dd929a2d8b661f3c20019d895fb8c3b4553ba42953b7267fa31",
+      "upstream_sha256": "72de0a6b2996a436f7a60cee60e0fc3f5208d75543a41cc697b864fd0850a531"
+    },
+    {
+      "path": "tests/fixtures/npu4000/README.md",
+      "status": "added",
+      "source_sha256": "7fb5b2d22b4945531703b19bbe9f028424cbf7719bb36a5a10e3e92188ccfe5d",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/add1-fp16.c",
+      "status": "added",
+      "source_sha256": "2dc6cd42dd2417b13bef9619370d852c15622689cd97b0ffc5e1c7c99e09255b",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/add1.4000xx.elf",
+      "status": "added",
+      "source_sha256": "ce69a18d414ea66814ac464eafa376d178dc326bb5b010cbef40d5c37b8d0661",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/arithmetic.c",
+      "status": "added",
+      "source_sha256": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm/manifest.json",
+      "status": "added",
+      "source_sha256": "182e7fd80a59301968bf5a5af071957dcb983cd38d8c7fcf5c0d46efc3723090",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm/square-f32.elf",
+      "status": "added",
+      "source_sha256": "c10bb26b65541eadc61afee9236ea8b7121283efaa64a63a9b99c22e3d41c3e9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm/square-f32.s",
+      "status": "added",
+      "source_sha256": "90568825b768c543c0b8024debeae0d80d2bf98a726b764c06b516b47f840ae5",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_eight/manifest.json",
+      "status": "added",
+      "source_sha256": "2d12e3ff0a8fedc9a68e0fbac4204caef8cbed94ff7cc74d2afbe16b7cdeadcd",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_eight/rect-f32.elf",
+      "status": "added",
+      "source_sha256": "1ae0313b31d6baef35cf415f100a28b5ebc8ae759e1cacdd922e651dd0983474",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_eight/rect-f32.s",
+      "status": "added",
+      "source_sha256": "c67943c615c688e100ee22c402a0998a1c4fb986309a2196365fd148cbc05008",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/manifest.json",
+      "status": "added",
+      "source_sha256": "c90a25c78026bda08feac08d63ddd88c7a84331f675a1d9f0a426cb8df481d73",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-fast.elf",
+      "status": "added",
+      "source_sha256": "ae96b32bfdf1b863e883fe285a2d01966385ff2efdbd62d74b8de7305bd9a570",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-fast.s",
+      "status": "added",
+      "source_sha256": "435ac0aef7a65ab7e8a0b4e7aff4f514a4f5ccd57377c821b3612fb3af7b51f6",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-four-tiles.elf",
+      "status": "added",
+      "source_sha256": "0ccdb1568a61d9ac2dc1d3e1f7bc6c49ff962896543573aa874a3c153b0966c8",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-four-tiles.s",
+      "status": "added",
+      "source_sha256": "7ca3c5967c4e8d56b6201f11fc546925a061ccb6ef0b803e972800ab8abd74e9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-lanes1.elf",
+      "status": "added",
+      "source_sha256": "4362771aafa4e78aec2ed5e454d4d335c0d2f73f4cd4bb4a34ed7c11b9ad1fa0",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-lanes1.s",
+      "status": "added",
+      "source_sha256": "dd56d9f4d3d419f751848fd62e90d9fe067ab88c5437045eba1fe62f80d0504c",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-lanes4.elf",
+      "status": "added",
+      "source_sha256": "dc7e9d97143a721adae9c0c5ea4470ed3342efc24ae97d9b8a7aef6f2e84f4e4",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_parallel/square-f32-lanes4.s",
+      "status": "added",
+      "source_sha256": "91008384e8c8714c9c47cd6d076ded1a3033de524e24358fe0d61561413d1198",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_rect/manifest.json",
+      "status": "added",
+      "source_sha256": "9b87e1db4574c3ad0a416701895a56f0f6253c506975dcf5993f2e418f16a6e7",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_rect/rect-f32.elf",
+      "status": "added",
+      "source_sha256": "c37949ef292018f42d7c4054b73bb3b8e18cd020c42be84b5ba35846818f6221",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/gemm_rect/rect-f32.s",
+      "status": "added",
+      "source_sha256": "0810698425ebe0c13dd6d52cac958607b1dc47b12e3acdbbd0277acb5fb4e59a",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/kv_select.c",
+      "status": "added",
+      "source_sha256": "a268f1dc64e3ddbfef7eb91316538f674d94d024fcf537aa74d55a85004a544a",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/kv_select/kv-select-f16.elf",
+      "status": "added",
+      "source_sha256": "8988946b9a6a2ac014f99143f30cbf37c2d0e76eaa8e6457887e0f8a7a8b4807",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/kv_select/kv-select-f16.s",
+      "status": "added",
+      "source_sha256": "dbfda40b346e696656cf93cc756459b0cfae87dc94514eaa80b2996ec323d13b",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/kv_select/manifest.json",
+      "status": "added",
+      "source_sha256": "dfcfab86fcaa174ab7e0c5f9f4b961196c16e26ec0b612afec8bb4720280c5c2",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/abs-f16.elf",
+      "status": "added",
+      "source_sha256": "f7056c85ae2c7e4459f95f3b78c86fb58fe469dc682ac18a50577aea2f0aecd6",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/abs-f16.s",
+      "status": "added",
+      "source_sha256": "81e942963371b92486096a7b3e8e1e6f3d380cd426f8d7a35f09115ac761e1d7",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/abs-f32.elf",
+      "status": "added",
+      "source_sha256": "d7c058a840d39cddc879130c5e9220b83b01dbf413c9f54d71e294ed2e9a561f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/abs-f32.s",
+      "status": "added",
+      "source_sha256": "c217335ffffd75a8db7b4b5fd06f3c1a845a78324f370253c2c74898e10a10d9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add-f16.elf",
+      "status": "added",
+      "source_sha256": "0f6cedba89722dd7eb4ae654d468c9ae740058a0286465fd64b165a07a5a18be",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add-f16.s",
+      "status": "added",
+      "source_sha256": "05cc58e6b8bdf56fe9da45cce5b70113d0af2a2cca74638616715c73428d0348",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add-f32.elf",
+      "status": "added",
+      "source_sha256": "69379d745a8ba5d2e56669c16487b17c55af88fea753cd412149824decf7b778",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add-f32.s",
+      "status": "added",
+      "source_sha256": "bf35a586dd5e12bbb78a317d93a7ee504d7a27b339ff773afc837db0197b0e06",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add1-f16.elf",
+      "status": "added",
+      "source_sha256": "aa9e408fbca58f8ca45c234ed2ccac430abd6e2591e85ccaa93b21acd2bd7af8",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add1-f16.s",
+      "status": "added",
+      "source_sha256": "9ddee0d6109139376d7f5b94f15709b502f17d2d437bab17298af0b5d0e7866a",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add1-f32.elf",
+      "status": "added",
+      "source_sha256": "fd9c9e9408bd41e6309d5b742e6b088611f8af99878ac116ccd11c0d5410aa5f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/add1-f32.s",
+      "status": "added",
+      "source_sha256": "7c5eec40cecd6995a22208efccaed6f8c1fe549667ecb45930e67839bbb73244",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/cast-f16.elf",
+      "status": "added",
+      "source_sha256": "84944fa7ac6bf57124d0fe6743df86fd39c1c2e1a5b0cb7db3f2e91036f3327f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/cast-f16.s",
+      "status": "added",
+      "source_sha256": "6d787f255bbd169d553878ef49ccd535720b64d103d18587e41e6e4396da12b8",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/cast-f32.elf",
+      "status": "added",
+      "source_sha256": "0e71653de2c5cb0cb2cfdc63671ab867ea5246ae2323b6b823463e23356aa0d0",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/cast-f32.s",
+      "status": "added",
+      "source_sha256": "ff0eef40116188ecf60075f50043966e64fddcceeb4f6b40b2efb9e320652225",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/div-f16.elf",
+      "status": "added",
+      "source_sha256": "6cdebc7a458fe6d4d95dd63b28d164e5173280a308ec05efb613af9a06e1b16d",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/div-f16.s",
+      "status": "added",
+      "source_sha256": "eba0c4b55257c1bdfd29cf7be01eaa1e989c207a0023a3e9811b219e082b4397",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/div-f32.elf",
+      "status": "added",
+      "source_sha256": "14fe3422abfebb76a4392bba653226c9153fe5fcdae2fa320e18e4da3fb40bb3",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/div-f32.s",
+      "status": "added",
+      "source_sha256": "0644d58ddd7753b6f5be7b9a07a133f8508c7dd497a2f732840db58e5a083b4c",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/manifest.json",
+      "status": "added",
+      "source_sha256": "c4496b20b60edc88d2e2e07919be97bb8071ba02f4aa0d80e285d4b8c79360ec",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/mul-f16.elf",
+      "status": "added",
+      "source_sha256": "80bb22e5c6b3bfc46044de5f7330681edeb4acd3b79cfd0562aba8d032264b0d",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/mul-f16.s",
+      "status": "added",
+      "source_sha256": "cc347abd61d507157e128a2ee37f04a8a9d979e6ab4f5d1d3c4b7886d21dc631",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/mul-f32.elf",
+      "status": "added",
+      "source_sha256": "e15acaaa91a38c4dcac0e25a536acd42f7ab97bb4874ada9725eb9448f06f864",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/mul-f32.s",
+      "status": "added",
+      "source_sha256": "218a2038903ff7d68c0e469e865636d3310876d5e03cc14d71f40158559a454d",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/neg-f16.elf",
+      "status": "added",
+      "source_sha256": "5785b55a8e67cd819aba8454648097bdd1f76f11cedd63577925e7cf6b007d27",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/neg-f16.s",
+      "status": "added",
+      "source_sha256": "a83a44471210ee2e356d71b141bed1e9c0a63632fa0a4f9e3bafa5672b904493",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/neg-f32.elf",
+      "status": "added",
+      "source_sha256": "e32f4af69e803301a95044e8458525ef0a2fef03d658f3a50534839743d1a198",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/neg-f32.s",
+      "status": "added",
+      "source_sha256": "95d208a29fa78223bd6d9a33286b47e8d513c9e81e7eb39baaca9c6f4273c9d4",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sign-f16.elf",
+      "status": "added",
+      "source_sha256": "764cb28a86648c852b09d38f2d4682e1b75e9737b986c8350c34245927a58b91",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sign-f16.s",
+      "status": "added",
+      "source_sha256": "876ab418a0c38c36334b14c2a1144e7c6cbae75b3fcda0665d33af1942f2fea6",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sign-f32.elf",
+      "status": "added",
+      "source_sha256": "1cceef654b1d14b44b3a13bd39b47f9a90cbfb4d5934ac2f69961cb8b23a9d4c",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sign-f32.s",
+      "status": "added",
+      "source_sha256": "b1fdd5b6eeaec5b40b70ea7dc1f368b8d80c8b619f51d961b0a7711c58902fd5",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sub-f16.elf",
+      "status": "added",
+      "source_sha256": "687ea48b50a97ac2fa2145d94f4b7ef43036602d7d008c59021bc427c16285a7",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sub-f16.s",
+      "status": "added",
+      "source_sha256": "15ac8dc2b872632dce4617f510eb78302b53078054af05f423477125a94d28b6",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sub-f32.elf",
+      "status": "added",
+      "source_sha256": "ca5f6a3ecf857b295aa6ef4859551c9756481f74ade4015df9f2572e09109613",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/precision/sub-f32.s",
+      "status": "added",
+      "source_sha256": "ea17471b3d449c65eab494a02b9bb875c4196306e119cc4ae221c39f6136d8a5",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rect_gemm.c",
+      "status": "added",
+      "source_sha256": "27085db6e5ebb6d2a7825c83c11950327eee221b40ce8cb7201f32c9ac1edfeb",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/manifest.json",
+      "status": "added",
+      "source_sha256": "fde09862a6b83426af4ae6b589b0b90ebbf436485500a88be2026188dfd265f9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/mean.elf",
+      "status": "added",
+      "source_sha256": "92f322da363452a4edae718c8378ec6da243f55d78e233ece0056fc804f9c86f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/mean.s",
+      "status": "added",
+      "source_sha256": "dfdaa627898087ab9b5b4bee21065bdac57998200268010c0d781ee5cdc3851e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu-f16.elf",
+      "status": "added",
+      "source_sha256": "228189d9323b6d55563defee01493d6ea1b7abf9d7131590440faed7fe91d49e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu-f16.s",
+      "status": "added",
+      "source_sha256": "2ba0e19921d73ce7a42f5a1c1c908c3c8d553fca61f2085f02319c8dd6e3e521",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu-f32.elf",
+      "status": "added",
+      "source_sha256": "e4999621270152b1edc10360fba9d71c2f7728e25b31546f4441736f761dbd71",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu-f32.s",
+      "status": "added",
+      "source_sha256": "6159c675145b47c9f6e338ac35db4974d57f83c6ece1fe95b3c77881e96bd0ef",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu_grad-f16.elf",
+      "status": "added",
+      "source_sha256": "4c40067fd62a7fb7759092690d1f3a8560fc2a1a5823f10526873faa443eff68",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu_grad-f16.s",
+      "status": "added",
+      "source_sha256": "0cd0f608ca93970130b5c8aaf387c8110d4979da6c2b9babdbc4100438be041e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu_grad-f32.elf",
+      "status": "added",
+      "source_sha256": "7926bb3f5b0c8f3da11ae6ae618ac1aae62fc4d4ae3726e80046f0784c00c2b6",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/relu_grad-f32.s",
+      "status": "added",
+      "source_sha256": "a7701c6c76991636e7a02d6388474de25c49a1b3e1ef6335f4336c96f90be5ed",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/rsqrt-f32.elf",
+      "status": "added",
+      "source_sha256": "051afe611f908796f2dfb69ce8c2e143a8b17ae2d2dc74526d7fb489ace52681",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/rsqrt-f32.s",
+      "status": "added",
+      "source_sha256": "2d6c5566b6b86088573b26ce90f76ddfd7a94b1a40fcb86cc3d3058a7a993ebc",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/sum.elf",
+      "status": "added",
+      "source_sha256": "94d6da306231325334d589e8e4f28ee93838bf35cbe9355b8cd0bf9aa569a539",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident/sum.s",
+      "status": "added",
+      "source_sha256": "90086d6136f37b368f797d268c006cf25db79c7081e07389db76123206c28d81",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident_activation.c",
+      "status": "added",
+      "source_sha256": "38cfbdd4342df3d3992d9891696545dfaff1ad5fcbf49488878fcf41a83a146f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/resident_reduce.c",
+      "status": "added",
+      "source_sha256": "dc68c74aa6a07be4157a1da36b0340ff1a0133b9858a3583057ad8e44aa6a18d",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rmsnorm.c",
+      "status": "added",
+      "source_sha256": "db19fbf778215c583090d402398dba1ca6fce67914c11c55fb8005d330eb7515",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rmsnorm/FP16_LICENSE",
+      "status": "added",
+      "source_sha256": "17e4f539024be2749ee729d1e2f01d24cef12ece8c9bf18e91a4349be29c80bf",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rmsnorm/manifest.json",
+      "status": "added",
+      "source_sha256": "4c3da63416e91234f62e92a38ea7734397c72e033e9cb141c51b1cc8c5e30e6b",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rmsnorm/rmsnorm-f16.elf",
+      "status": "added",
+      "source_sha256": "6c75489f4be7ba9e452c670a6b1fed994b748a1891970ef012a82b5bf6a93377",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/rmsnorm/rmsnorm-f16.s",
+      "status": "added",
+      "source_sha256": "f5990e1fe3641c3eb80d2a7fc048b0a7d5a38463229bd679b84f705599a07c59",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/square_gemm.c",
+      "status": "added",
+      "source_sha256": "9a0db331f83566f3e858f109d38cc22a264d6e3b2baf7267d3e3e1155049c2fb",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/fixtures/npu4000/square_gemm_parallel.c",
+      "status": "added",
+      "source_sha256": "3c70a20c21cc5bacc73bb38c4f6c8251d36e549b36e352efc5b4364bce2dd29f",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/helpers/worker_fixture_posix.c",
+      "status": "line_endings_only",
+      "source_sha256": "59325316aa6daed7a8ca046279dfecdfdb4e71f711980e09270d8997fe5edbe5",
+      "upstream_sha256": "7f50aa8e1163101ee67fdd594fe710e6f376d03d97229980960bfc98e0b0f941"
+    },
+    {
+      "path": "tests/integration/test_graphinfer.c",
+      "status": "line_endings_only",
+      "source_sha256": "ef9fc7e80b8c176b6d28f68cdbe71de4530679aa8579392b6df8849f7581eb71",
+      "upstream_sha256": "abb1f0ee37c722f2f7cfff012db83d5e996550109bbd6a370d06c0342ebfb679"
+    },
+    {
+      "path": "tests/integration/test_ir2blob.c",
+      "status": "line_endings_only",
+      "source_sha256": "b959fd9c7389714495dabb2bd33395e056740205da1674a249dea3cce7b32aa9",
+      "upstream_sha256": "4e7ccb8a8921b540b567ddb8301b1bd9b620a960f0242a7c37bc64051bfe03af"
+    },
+    {
+      "path": "tests/integration/test_patchblob.c",
+      "status": "line_endings_only",
+      "source_sha256": "9a41b6c7070339201fb72f4f717ffcd764afa6beeaa2d82a4acf307e595c277e",
+      "upstream_sha256": "41952cb2ee8afd26f2a83fec4a83aaf046a9d6ecfcc3b6370aeb57f3e2e11414"
+    },
+    {
+      "path": "tests/integration/test_shavecc.c",
+      "status": "line_endings_only",
+      "source_sha256": "d71b9f5e35dd0ff67b97bb4f9abe02dc4a2abe21b21ba3095ff1bfd509c736d9",
+      "upstream_sha256": "618b29d255da43c450d964c81d2e9c7b412de1cca364c1a8993acbc9d8ae8c51"
+    },
+    {
+      "path": "tests/package/CMakeLists.txt",
+      "status": "line_endings_only",
+      "source_sha256": "a6a6010a4b5dbd75a81b13b768a49494a6d55e0b43e9469b09d1b0d70e88ae1b",
+      "upstream_sha256": "c3fb2e82d4333927b6e9bdfb65d2470f1dca78768d762394c23669420d3b3b5c"
+    },
+    {
+      "path": "tests/package/smoke.c",
+      "status": "line_endings_only",
+      "source_sha256": "4881a3149edcb9e74573e764c9e3b7ca851916e2fa8f64ee01bb1b68f7b2515e",
+      "upstream_sha256": "d1bafae66c44b4ff878e192c32ed65da252c2a5aef6536f9b06b52a97ebaf9fb"
+    },
+    {
+      "path": "tests/python/test_npu4000.py",
+      "status": "added",
+      "source_sha256": "b4ed0f3561c387dbd52a16da2f4f977c3842629e6466bd85e8d8797d6e27c3ed",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/python/test_porting_probe.py",
+      "status": "line_endings_only",
+      "source_sha256": "9c60dd455b3dcbb3408bbe38b59cc489a5454407bbb8e59220b027927f302731",
+      "upstream_sha256": "c018f7f0cd504039ef8126349192f100735f634b8876cb0551e9cb920761405f"
+    },
+    {
+      "path": "tests/python/test_python_api.py",
+      "status": "modified",
+      "source_sha256": "c7efecb50377530bfbca0a60d4e499510bf847f01ffab707f88f5008bf753d1c",
+      "upstream_sha256": "44ce8542f0b94ce17457b798d0521289caaeb80ad9bf737781e80e48e09fe908"
+    },
+    {
+      "path": "tests/unit/test_api.c",
+      "status": "line_endings_only",
+      "source_sha256": "6b90119cad668c2b7de827193cec07fa6fea3fd755589837126a948205b2693b",
+      "upstream_sha256": "a28a7d315614e5789605439070099a80a95edf372efc14d34d296a3e7784f5ed"
+    },
+    {
+      "path": "tests/unit/test_common.c",
+      "status": "line_endings_only",
+      "source_sha256": "762ec964696f38a29c4074c3d7a74608b50c6aa4bf8aedd87a87cbc8758ce793",
+      "upstream_sha256": "32a89c8112129aea990edbe38e1d99d675ee451e7b738266d002fc40d6dae96f"
+    },
+    {
+      "path": "tests/unit/test_elf32.c",
+      "status": "line_endings_only",
+      "source_sha256": "0b2200c7b53ad9a8924f20a6110e837b768142e5055d08c3dc47ef4662078a7b",
+      "upstream_sha256": "052ca9b9e05d27e496d8f9afc57a96f2ee4e44455ad43d19984ba666ffb3872b"
+    },
+    {
+      "path": "tests/unit/test_graph_blob.c",
+      "status": "line_endings_only",
+      "source_sha256": "966ca7fc2cafab008739fa396b8fb30379edd0c7b1732ecea0e851ec00a8bc98",
+      "upstream_sha256": "3bfdd7568589c49fdb9a64b50ef7f1f22ead90c0e0e43823562ddef22f2fe3cf"
+    },
+    {
+      "path": "tests/unit/test_session_chain.c",
+      "status": "added",
+      "source_sha256": "16e29eb4e8215e944898ac383c9a38f35d3735c1f90b9071ec27769b84225ddc",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/unit/test_session_failure.c",
+      "status": "added",
+      "source_sha256": "5554a3dce1eaeff6067f3c2177ca9e7f9e57464cf90a8f3fef46094a26b54a17",
+      "upstream_sha256": null
+    },
+    {
+      "path": "tests/unit/test_worker_process_posix.c",
+      "status": "line_endings_only",
+      "source_sha256": "a726c41e5cba4662bda9136083654358e44c53f49cb03704b4eb358462daf81b",
+      "upstream_sha256": "7f9013be80a0b94055429192abf3489706084b36d23121c3010d37ad14e0a6db"
+    },
+    {
+      "path": "tools/msvc-run.ps1",
+      "status": "line_endings_only",
+      "source_sha256": "3e566b0340af29a5954d649fd134b25a5eaba4f99d5387fba66bb691f87a7ae7",
+      "upstream_sha256": "796415c3ec44a5ccd9d3aa0df025867824b2c364b9458f8be78acc58109a4c45"
+    },
+    {
+      "path": "tools/porting_probe.py",
+      "status": "line_endings_only",
+      "source_sha256": "fa5caa6a57edc4f2aba8aa63ca635bcadb726544991fc773f0f6ac84af59bb83",
+      "upstream_sha256": "0f9d9a1bd2e275c4d3fdaf59beccac818407cba9775cab491c124c2b1855e806"
+    },
+    {
+      "path": "wiki/CUSTOM_KERNELS.md",
+      "status": "line_endings_only",
+      "source_sha256": "ac96831080c5c9f8cff1866a598653394b65f40e81bde42b78d6c2663ca087fb",
+      "upstream_sha256": "ea256d3a5c9ef83f281ecef6fb93870b7627179a2fc7154a49d3444d0c31f805"
+    },
+    {
+      "path": "wiki/DEVELOPMENT.md",
+      "status": "line_endings_only",
+      "source_sha256": "f557289b30d03c6a88a5a9522df263ca4815bec1b4503de85674c0e0193dc824",
+      "upstream_sha256": "9c7a139f1c760933ff24680e5070a4d0c3ffc6878932bbbbc7d709ee1ead709a"
+    },
+    {
+      "path": "wiki/GET_MOVITOOLS.md",
+      "status": "line_endings_only",
+      "source_sha256": "9dbc200f38031c0bd36d60e246806fb6c3fffd0c03bfcf0a083162aa08d0e9ec",
+      "upstream_sha256": "c3f9a79fbf693004a9e9aa7de41e6f1945871c6a9257345ece86ac930f490d10"
+    },
+    {
+      "path": "wiki/HOW_NPUNLOCK_WORKS.md",
+      "status": "line_endings_only",
+      "source_sha256": "b2dc8fc376d22d909793e2c2ad9cc2b800f23aef8de1656f227a0558356d1d02",
+      "upstream_sha256": "042de856eab1f007678f21e982805cccc3c6f85c5a74edff5208917bc0a27699"
+    },
+    {
+      "path": "wiki/INTEL_NPU_ARCHITECTURE.md",
+      "status": "line_endings_only",
+      "source_sha256": "b4422a4f680250fe4dd5e200fb38a420abcefd8788a1bdf5a27a3d5201c16028",
+      "upstream_sha256": "aebfc5e2998aa984c2265f03a2728e887c99dae46807df19e01796f840d30546"
+    },
+    {
+      "path": "wiki/LIMITATIONS.md",
+      "status": "line_endings_only",
+      "source_sha256": "fa8c8513988841b1e79aaf585b206b423033033a28beeaff844621e09370e2ec",
+      "upstream_sha256": "2e95243f12e3b287a34e2ededc294f50d37379718508c80289f21f737a905410"
+    },
+    {
+      "path": "wiki/MODEL_TO_MACHINE_CODE.md",
+      "status": "line_endings_only",
+      "source_sha256": "f0118730c0a5b00c33b17bb13af8ba908e499c60d754048188c287ac970505fb",
+      "upstream_sha256": "ac8d76b50b21eaa630d3a1d4636521edfcef49b342b46ceb99735a089ba7dcc6"
+    },
+    {
+      "path": "wiki/PORTING.md",
+      "status": "line_endings_only",
+      "source_sha256": "4dcc3efe610a2518ea744d53e01133d424d1759d8e01e9f989d9a24ba6a867f8",
+      "upstream_sha256": "4d10a648cdb422075bd24d6641375c5c9e7ddf6cae0631d5fc6e42486f4cc857"
+    },
+    {
+      "path": "wiki/PORTING_PROBE_BUNDLE.md",
+      "status": "line_endings_only",
+      "source_sha256": "0578e808090fc94e151a5cc77b60ba53f688649f85823269b53b624a542e50bc",
+      "upstream_sha256": "af38cf41c7187f303554de72193f05152e320890efcee3689afe6299145f8625"
+    },
+    {
+      "path": "wiki/PYTHON_API.md",
+      "status": "line_endings_only",
+      "source_sha256": "637811bd7d177f8db18a23a07868bcfaa1b34016edfefd328a32f45c3759c7c1",
+      "upstream_sha256": "7814adb4ddd5dc9abcd68b4b82dc0b2acc7c43b157fe3d92c91dcd804ad1d557"
+    },
+    {
+      "path": "wiki/README.md",
+      "status": "line_endings_only",
+      "source_sha256": "e9fe30d041c82e15b4190a9cacf1420fceb012744a2a74855601e2159581d2ee",
+      "upstream_sha256": "2e4d6643ddef1b484ffec6fa6cc3d5d4ba7c21c2e538a4f2081dff910668fabc"
+    },
+    {
+      "path": "wiki/REVERSE_ENGINEERING.md",
+      "status": "line_endings_only",
+      "source_sha256": "cc82a537a91cd53111250f3c55fd0e4090d28863441fb0ce1f1efb6f95af4c6a",
+      "upstream_sha256": "c4ddc880a774d1549797d5a6acb5a28da7ae71278c024964c8e29ad0bcd5d538"
+    }
+  ],
+  "excluded_upstream_or_local_files": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    "tests/fixtures/npu3720/abs-abs-1x32.blob",
+    "tests/fixtures/npu3720/abs-add-1x16-tile1.blob",
+    "tests/fixtures/npu3720/abs.bin",
+    "tests/fixtures/npu3720/add1-fp16.elf",
+    "tests/fixtures/npu3720/add1-shared-1x16.blob",
+    "tests/fixtures/npu3720/maximum-broadcast-1x32-f16.blob",
+    "tests/fixtures/npu4000/abs-1x17.blob",
+    "tests/fixtures/npu4000/abs-f32-1x17.blob",
+    "tests/fixtures/npu4000/gemm/power-4-reference.blob",
+    "tests/fixtures/npu4000/gemm/power-4-split.blob",
+    "tests/fixtures/npu4000/gemm_eight/power-capacity-1152.blob",
+    "tests/fixtures/npu4000/gemm_parallel/power-four-tiles-8.blob",
+    "tests/fixtures/npu4000/gemm_rect/power-capacity-1152.blob",
+    "tests/fixtures/npu4000/power-f16-1x17.blob",
+    "tests/fixtures/npu4000/resident/broadcast-f16-1x5-to-3x5.blob",
+    "tests/fixtures/npu4000/resident/broadcast-f32-1x5-to-3x5.blob",
+    "tests/fixtures/npu4000/resident/gather-f16-36.blob",
+    "tests/fixtures/npu4000/resident/gather-f32-36.blob",
+    "tests/fixtures/npu4000/resident/halfcode-slice-17.blob",
+    "tests/fixtures/npu4000/resident/matrix-concat-f16.blob",
+    "tests/fixtures/npu4000/resident/matrix-concat-f32.blob",
+    "tests/fixtures/npu4000/resident/permute-f16-3x5.blob",
+    "tests/fixtures/npu4000/resident/permute-f32-3x5.blob",
+    "tests/fixtures/npu4000/resident/reducemean-3x5.blob",
+    "tests/fixtures/npu4000/resident/reducesum-3x5.blob"
+  ]
+}

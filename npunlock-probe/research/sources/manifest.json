@@ -1,0 +1,298 @@
+[
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": ".gitmodules",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/.gitmodules",
+    "sha256": "f8241a15d4a13ff4e5bc3e3fe274fcc9ce5984e17639d101ea1872a56b799177",
+    "bytes": 529
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_api.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_api.h",
+    "sha256": "48d7594a781d553a5ed532f796c983f50fa8f5cc002a80cbf37fb6b3cbd112f4",
+    "bytes": 2324
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_shavert.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_shavert.h",
+    "sha256": "054246b4dd0d75c9164d15027be2213e077d7ba8abab0263aad5ec7ba03a8fc2",
+    "bytes": 4118
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_kernel_invo.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_kernel_invo.cpp",
+    "sha256": "cec7869cec8472684da88cc7566ac32bf32f02e6536e5974a2fb80bc23ae3fac",
+    "bytes": 5480
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_kernel_range.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_kernel_range.cpp",
+    "sha256": "321d8c4a1100550eb20284fdb27e5608d3321592192257200f4532c8901930b9",
+    "bytes": 2784
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_shave_rt.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/ops/act_shave_rt.cpp",
+    "sha256": "da4069472da75b7b9d50397b9f3759c080f34c0cfa201b6764cb0e81da4109bb",
+    "bytes": 1778
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_kernel_invocation_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_kernel_invocation_rewriter.cpp",
+    "sha256": "ce0ea90f7b7692668f2e1baac0779d3352022ae2e1d2d209294509a18b2d3e93",
+    "bytes": 3616
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_kernel_range_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_kernel_range_rewriter.cpp",
+    "sha256": "5c588266e09f653f2490a18b73eaa75842e22178bdcf94f68d42fe39bbc03a1f",
+    "bytes": 2010
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_shave_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUASM2NPUReg40XX/act_shave_rewriter.cpp",
+    "sha256": "49af89425bd2f5e04239a655982ad5434ef8de44089e38465a2eaf371ee4e96f",
+    "bytes": 893
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_data_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_data_rewriter.cpp",
+    "sha256": "c67f2c6e56f0aae0c39ec315a7251d273ec3287c45c202fa08f7c2de20383395",
+    "bytes": 792
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_entry_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_entry_rewriter.cpp",
+    "sha256": "f35639020247531c9c21a799ac7102fdbb3eb2f0194d26c0035f1a1228e3e57e",
+    "bytes": 797
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_invocation_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_invocation_rewriter.cpp",
+    "sha256": "e8598bf3a731a05b0a0d5934cbb912dd038edec6149c55cae94512256e7cea3c",
+    "bytes": 3018
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_params_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_params_rewriter.cpp",
+    "sha256": "2aa6946e64f9f1d69a24daa4bfd2fb52d27d46ec119e827a732ccad784e74915",
+    "bytes": 4283
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_range_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_range_rewriter.cpp",
+    "sha256": "84cf332b9540347d820e1eb41513073fed9fe91636b92e9d06de7e4d70c925b0",
+    "bytes": 1404
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_text_rewriter.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/conversion/rewriters/VPUMI40XX2VPUASM/kernel_text_rewriter.cpp",
+    "sha256": "a0c8aa128680dbf2faef86c60f328fb66f35cfdb6dc6fd7d561791c33430429c",
+    "bytes": 792
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/dialect/VPUASM/ops/kernel_params.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/dialect/VPUASM/ops/kernel_params.cpp",
+    "sha256": "8e508b5008635b632eb04f2e114d46b816a83a7b0871193fe6725d242e65a9a6",
+    "bytes": 17454
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "sw_runtime_kernels/kernels/CMakeLists.txt",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/sw_runtime_kernels/kernels/CMakeLists.txt",
+    "sha256": "759e6aa7ab733da8d9ba037588159c9e6c6b43578f1294d76226520314323ab6",
+    "bytes": 21325
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "sw_runtime_kernels/kernels/cmake/mv_tools.cmake",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/sw_runtime_kernels/kernels/cmake/mv_tools.cmake",
+    "sha256": "7ff2688187e5405992cf6b19273320460fbcafa021e116a609f38a45350651f8",
+    "bytes": 3709
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "sw_runtime_kernels/kernels/prebuild/act_shave_bin/activation_abs.3720xx.elf",
+    "url": "https://media.githubusercontent.com/media/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/sw_runtime_kernels/kernels/prebuild/act_shave_bin/activation_abs.3720xx.elf",
+    "sha256": "fb26467b140e459e99877d94e5162bc07d15aab00c0ce6c71639bf9e8345c3a8",
+    "bytes": 5948
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "sw_runtime_kernels/kernels/prebuild/act_shave_bin/activation_abs.4000xx.elf",
+    "url": "https://media.githubusercontent.com/media/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/sw_runtime_kernels/kernels/prebuild/act_shave_bin/activation_abs.4000xx.elf",
+    "sha256": "cf235b84f6138462834fcb551e9e42a964b2ca8c4c6a654e2ef99cb2b476af9a",
+    "bytes": 5708
+  },
+  {
+    "repo": "intel/linux-npu-driver",
+    "revision": "aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2",
+    "path": ".gitmodules",
+    "url": "https://raw.githubusercontent.com/intel/linux-npu-driver/aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2/.gitmodules",
+    "sha256": "27b2c45a6fad5f493c34f400a078752cc400aba876b25da1209d76a87c22a996",
+    "bytes": 529
+  },
+  {
+    "repo": "intel/linux-npu-driver",
+    "revision": "aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2",
+    "path": "firmware/include/api/vpu_nnrt_api.h",
+    "url": "https://raw.githubusercontent.com/intel/linux-npu-driver/aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2/firmware/include/api/vpu_nnrt_api.h",
+    "sha256": "444f9411f56390bebd31208422b0c4d6cb4d74cb26294895668a78a8130e7e9e",
+    "bytes": 2289
+  },
+  {
+    "repo": "intel/linux-npu-driver",
+    "revision": "aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2",
+    "path": "firmware/include/api/vpu_nnrt_shavert.h",
+    "url": "https://raw.githubusercontent.com/intel/linux-npu-driver/aea583dcd86a4723a8d3bb06ad94b6eb2f80c6f2/firmware/include/api/vpu_nnrt_shavert.h",
+    "sha256": "30e19e6feff5a66c9048a57f506307ed474a59182d0e841bf1b8e820ced1fde1",
+    "bytes": 4056
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "sw_runtime_kernels/kernels/inc/common_types.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/sw_runtime_kernels/kernels/inc/common_types.h",
+    "sha256": "548feb721e2152808c06f7f7470eeb78e41fd9bddb327a8d51f4e1788da69187",
+    "bytes": 3805
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_common.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_common.h",
+    "sha256": "6c6e342fad0b220771b50072b5e1ecf903c580391ab70e457ffe380e650a9219",
+    "bytes": 5122
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/utils.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/NPU40XX/dialect/NPUReg40XX/utils.cpp",
+    "sha256": "6ed2874be4cf7b177c8acc92bb2eae60eeab6ffd142b1e2f3c06be9d27b88df0",
+    "bytes": 3247
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/dialect/VPUASM/ops/declare_kernel_entry.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/dialect/VPUASM/ops/declare_kernel_entry.cpp",
+    "sha256": "6d1ea7da59c65988b49d0c7b69b9a4b926b913b5b8116a4114fb2939b00765b9",
+    "bytes": 795
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/dialect/VPU/utils/sw_utils.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/dialect/VPU/utils/sw_utils.cpp",
+    "sha256": "9c967cb9f0ae9474da9284abcc67fe10d1366677895fd4fc84fefb9a49d1b522",
+    "bytes": 114852
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/dialect/VPUIP/utils/sw_utils.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/dialect/VPUIP/utils/sw_utils.cpp",
+    "sha256": "680721b1a98b4de6a3d76dec272bda558049870bde5425da61b7a54d25ca7009",
+    "bytes": 133653
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler",
+    "revision": "0b38f7d42113ff329ac2bdd33583d123de4ccf2f",
+    "path": "src/vpux_compiler/src/utils/llvm_to_binary.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/src/utils/llvm_to_binary.cpp",
+    "sha256": "33986724a9decd4df64d681c51ad872c21b22caa798a9b6fb1406649ae509bf2",
+    "bytes": 20981
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "core/include/vpux_elf/types/vpu_extensions.hpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/core/include/vpux_elf/types/vpu_extensions.hpp",
+    "sha256": "73c8d9afdf1d6c90392c81a6f2bcb876b5998d14e43fb2a9cb77b389f3fac3c3",
+    "bytes": 8565
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "loader/src/relocations.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/loader/src/relocations.cpp",
+    "sha256": "53d53d3c259e935fb81863032a5e12cdc238300f16b5f2a332b8d89d44c04d62",
+    "bytes": 9178
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "loader/include/vpux_headers/relocations.hpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/loader/include/vpux_headers/relocations.hpp",
+    "sha256": "09ae8674f8a1ad5b8e3801847ce5f88fa1ed71c2b89210e6eb6efe40542eb711",
+    "bytes": 1463
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "3rdparty/nnrt/details/api/vpu_nnrt_common.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/3rdparty/nnrt/details/api/vpu_nnrt_common.h",
+    "sha256": "1a925f65963b21fca6f3d66014e9f8fb291cbe298b887dadcf40bf6d7db9ed83",
+    "bytes": 5081
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "3rdparty/nnrt/details/api/vpu_cmx_info_40xx.h",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/3rdparty/nnrt/details/api/vpu_cmx_info_40xx.h",
+    "sha256": "f9fc6a25088a62aab49b224854940977ab981572617e1a56a0ca5cef1716c3f1",
+    "bytes": 2682
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "loader/src/vpux_loader.cpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/loader/src/vpux_loader.cpp",
+    "sha256": "8e4d2dbff52b1ad152e5f49dbbc02c6b09d68c36b17cc614aa343390d8f0f36f",
+    "bytes": 83410
+  },
+  {
+    "repo": "openvinotoolkit/npu_compiler_elf",
+    "revision": "d325f45f2cb405b5fa2ff17a30de9469f1641b73",
+    "path": "core/include/vpux_elf/reader.hpp",
+    "url": "https://raw.githubusercontent.com/openvinotoolkit/npu_compiler_elf/d325f45f2cb405b5fa2ff17a30de9469f1641b73/core/include/vpux_elf/reader.hpp",
+    "sha256": "a1fb6623527c5b3e8e0969000fa6caa116205108f818d0c307805e1f4505d727",
+    "bytes": 12025
+  }
+]

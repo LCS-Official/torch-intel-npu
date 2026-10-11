@@ -1,0 +1,40 @@
+# Local environments, downloaded tools, models and compiled native extensions
+.conda/
+.conda-pkgs/
+# Authentication belongs outside the source workspace.
+.env
+.env.*
+.secrets/
+github-token*
+__pycache__/
+*.py[cod]
+models/
+npunlock-probe/toolchain/
+npunlock-probe/native-release/
+npunlock-probe/native-runtime/
+npunlock-probe/downloads/
+npunlock-probe/session-runtime/
+npunlock-probe/torch-device/*
+!npunlock-probe/torch-device/backend.cpp
+npunlock-probe/research/model-benchmark-deps/
+source-release*/
+*.dll
+*.pyd
+*.exe
+*.obj
+*.lib
+*.exp
+*.whl
+*.npc
+*.npz
+*.npy
+*.safetensors
+*.blob
+npunlock/build/
+# Preserve Markdown reports, not raw experiment output or before/after snapshots.
+npunlock-probe/research/results/*
+!npunlock-probe/research/results/*/
+npunlock-probe/research/results/*/*
+!npunlock-probe/research/results/*/REPORT.md
+npunlock-probe/research/sources/*
+!npunlock-probe/research/sources/manifest.json

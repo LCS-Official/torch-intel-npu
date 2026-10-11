@@ -1,0 +1,192 @@
+from os import PathLike
+from typing import Any, Iterable, Mapping, Sequence, TypeAlias
+
+import numpy as np
+
+Shape: TypeAlias = tuple[int, ...]
+DType: TypeAlias = str
+
+class NativeError(RuntimeError):
+    stage: str
+    status: int
+    status_name: str
+    diagnostic: bytes
+    stdout_log: bytes
+    stderr_log: bytes
+
+class TensorSpec:
+    shape: Shape
+    dtype: DType
+    def __init__(self, shape: object, dtype: object) -> None: ...
+
+class Tensor:
+    @property
+    def shape(self) -> Shape: ...
+    @property
+    def dtype(self) -> DType: ...
+    def __add__(self, other: Tensor) -> Tensor: ...
+    def __mul__(self, other: Tensor) -> Tensor: ...
+    def __matmul__(self, other: Tensor) -> Tensor: ...
+
+class Graph:
+    inputs: tuple[Tensor, ...]
+    outputs: tuple[Tensor, ...]
+    name: str
+    def __init__(self, inputs: Iterable[Tensor], outputs: Iterable[Tensor], name: str = ...) -> None: ...
+
+class PatchTarget:
+    def __init__(
+        self,
+        invocation_index: int,
+        range_index: int,
+        input_count: int,
+        element_count: int,
+        span_bytes: int,
+        contract_flags: int = ...,
+    ) -> None: ...
+
+class InferenceInput:
+    selector: int | str
+    data: bytes
+    def __init__(self, selector: int | str, data: bytes) -> None: ...
+
+class InferenceOutput:
+    argument_index: int
+    argument_name: str
+    shape: Shape
+    dtype: DType
+    data: bytes
+
+class InferenceResult:
+    outputs: tuple[InferenceOutput, ...]
+    driver_index: int
+    device_index: int
+    driver_version: int
+    vendor_id: int
+    device_id: int
+
+class IrCompileResult:
+    graph_blob: bytes
+    driver_index: int
+    device_index: int
+    driver_version: int
+    vendor_id: int
+    device_id: int
+    graph_extension_version: int
+    compiler_version: tuple[int, int]
+
+class SerializedIR:
+    xml: bytes
+    weights: bytes
+
+class NativeLibraries:
+    def __init__(self, directory: str | PathLike[str] | None = ..., *,
+                 session_library: str | PathLike[str] | None = ...) -> None: ...
+    def create_inference_session(self, graph_blob: bytes, *, timeout_ms: int = ...,
+                                 parent: InferenceSession | None = ...) -> InferenceSession: ...
+
+class NativeSharedBuffer:
+    @property
+    def address(self) -> int: ...
+    @property
+    def size(self) -> int: ...
+    def release(self) -> None: ...
+
+class InferenceSession:
+    def create_buffer(self, size: int) -> NativeSharedBuffer: ...
+    def infer(self, inputs: Iterable[tuple[int | str, NativeSharedBuffer]],
+              outputs: Iterable[tuple[int | str, NativeSharedBuffer]]) -> None: ...
+    def close(self) -> None: ...
+
+class SharedArray(np.ndarray): ...
+
+class Program:
+    graph_blob: bytes
+    graph: Graph
+    serialized_ir: SerializedIR | None
+    ir_provenance: IrCompileResult | None
+    patch_reports: tuple[bytes, ...]
+    def to_bytes(self) -> bytes: ...
+    def save(self, destination: str | PathLike[str]) -> None: ...
+    def shared_array(self, shape: object, dtype: object) -> SharedArray: ...
+    def run(
+        self,
+        inputs: Mapping[str, object],
+        *,
+        outputs: Mapping[str, object] | None = ...,
+    ) -> Mapping[str, object]: ...
+
+def input(name: str, *, shape: object, dtype: object) -> Tensor: ...
+def configure(*, movi_dll_dir: str | PathLike[str] | None) -> None: ...
+def constant(value: object, *, name: str | None = ...) -> Tensor: ...
+def constant_packed(data: bytes, *, shape: object, dtype: object, name: str | None = ...) -> Tensor: ...
+def op(name: str, *inputs: Tensor, **attributes: object) -> Tensor | tuple[Tensor, ...]: ...
+def custom(
+    *inputs: Tensor,
+    source: str | bytes | PathLike[str],
+    carrier: str,
+    _shape: object | None = ...,
+    _dtype: object | None = ...,
+    _outputs: Sequence[TensorSpec] | None = ...,
+    _name: str | None = ...,
+    _patch_targets: Sequence[PatchTarget] | None = ...,
+    **attributes: object,
+) -> Tensor | tuple[Tensor, ...]: ...
+def compile(
+    graph: Graph,
+    *,
+    native_dir: str | PathLike[str] | None = ...,
+    movi_dll_dir: str | PathLike[str] | None = ...,
+    linker_script: str | PathLike[str] | bytes | None = ...,
+    build_flags: str = ...,
+    definitions: tuple[str, ...] = ...,
+    timeout_ms: int = ...,
+    ir_worker: str | None = ...,
+    movi_worker: str | None = ...,
+    libraries: Any = ...,
+) -> Program: ...
+def load_native(
+    blob: bytes | bytearray | memoryview,
+    *,
+    graph: Graph,
+    native_dir: str | PathLike[str] | None = ...,
+    timeout_ms: int = ...,
+    libraries: Any = ...,
+) -> Program: ...
+def load_native_file(
+    source: str | PathLike[str],
+    *,
+    graph: Graph,
+    native_dir: str | PathLike[str] | None = ...,
+    timeout_ms: int = ...,
+    libraries: Any = ...,
+) -> Program: ...
+def Abs(x: Tensor, *, _shape: object, _dtype: object, _name: str | None = ...) -> Tensor: ...
+def Add(
+    a: Tensor,
+    b: Tensor,
+    *,
+    _shape: object,
+    _dtype: object,
+    _name: str | None = ...,
+    **attributes: object,
+) -> Tensor: ...
+def MatMul(
+    a: Tensor,
+    b: Tensor,
+    *,
+    transpose_a: bool = ...,
+    transpose_b: bool = ...,
+    _shape: object,
+    _dtype: object,
+    _name: str | None = ...,
+) -> Tensor: ...
+def Multiply(
+    a: Tensor,
+    b: Tensor,
+    *,
+    _shape: object,
+    _dtype: object,
+    _name: str | None = ...,
+    **attributes: object,
+) -> Tensor: ...

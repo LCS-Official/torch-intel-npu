@@ -1,0 +1,96 @@
+{
+  "target": "4000xx",
+  "source_sha256": "579fc8a26844182bcdaf15d3bb03408a3fcd587d32a777b6c4f91d1fa7d680b8",
+  "kernels": {
+    "add1-f16": {
+      "elf_sha256": "aa9e408fbca58f8ca45c234ed2ccac430abd6e2591e85ccaa93b21acd2bd7af8",
+      "assembly_sha256": "9ddee0d6109139376d7f5b94f15709b502f17d2d437bab17298af0b5d0e7866a",
+      "elf_bytes": 1580
+    },
+    "neg-f16": {
+      "elf_sha256": "5785b55a8e67cd819aba8454648097bdd1f76f11cedd63577925e7cf6b007d27",
+      "assembly_sha256": "a83a44471210ee2e356d71b141bed1e9c0a63632fa0a4f9e3bafa5672b904493",
+      "elf_bytes": 1580
+    },
+    "abs-f16": {
+      "elf_sha256": "f7056c85ae2c7e4459f95f3b78c86fb58fe469dc682ac18a50577aea2f0aecd6",
+      "assembly_sha256": "81e942963371b92486096a7b3e8e1e6f3d380cd426f8d7a35f09115ac761e1d7",
+      "elf_bytes": 1580
+    },
+    "add-f16": {
+      "elf_sha256": "0f6cedba89722dd7eb4ae654d468c9ae740058a0286465fd64b165a07a5a18be",
+      "assembly_sha256": "05cc58e6b8bdf56fe9da45cce5b70113d0af2a2cca74638616715c73428d0348",
+      "elf_bytes": 3724
+    },
+    "sub-f16": {
+      "elf_sha256": "687ea48b50a97ac2fa2145d94f4b7ef43036602d7d008c59021bc427c16285a7",
+      "assembly_sha256": "15ac8dc2b872632dce4617f510eb78302b53078054af05f423477125a94d28b6",
+      "elf_bytes": 3900
+    },
+    "mul-f16": {
+      "elf_sha256": "80bb22e5c6b3bfc46044de5f7330681edeb4acd3b79cfd0562aba8d032264b0d",
+      "assembly_sha256": "cc347abd61d507157e128a2ee37f04a8a9d979e6ab4f5d1d3c4b7886d21dc631",
+      "elf_bytes": 4284
+    },
+    "div-f16": {
+      "elf_sha256": "6cdebc7a458fe6d4d95dd63b28d164e5173280a308ec05efb613af9a06e1b16d",
+      "assembly_sha256": "eba0c4b55257c1bdfd29cf7be01eaa1e989c207a0023a3e9811b219e082b4397",
+      "elf_bytes": 2796
+    },
+    "cast-f16": {
+      "elf_sha256": "84944fa7ac6bf57124d0fe6743df86fd39c1c2e1a5b0cb7db3f2e91036f3327f",
+      "assembly_sha256": "6d787f255bbd169d553878ef49ccd535720b64d103d18587e41e6e4396da12b8",
+      "elf_bytes": 1164
+    },
+    "sign-f16": {
+      "elf_sha256": "764cb28a86648c852b09d38f2d4682e1b75e9737b986c8350c34245927a58b91",
+      "assembly_sha256": "876ab418a0c38c36334b14c2a1144e7c6cbae75b3fcda0665d33af1942f2fea6",
+      "elf_bytes": 1484
+    },
+    "add1-f32": {
+      "elf_sha256": "fd9c9e9408bd41e6309d5b742e6b088611f8af99878ac116ccd11c0d5410aa5f",
+      "assembly_sha256": "7c5eec40cecd6995a22208efccaed6f8c1fe549667ecb45930e67839bbb73244",
+      "elf_bytes": 924
+    },
+    "neg-f32": {
+      "elf_sha256": "e32f4af69e803301a95044e8458525ef0a2fef03d658f3a50534839743d1a198",
+      "assembly_sha256": "95d208a29fa78223bd6d9a33286b47e8d513c9e81e7eb39baaca9c6f4273c9d4",
+      "elf_bytes": 924
+    },
+    "abs-f32": {
+      "elf_sha256": "d7c058a840d39cddc879130c5e9220b83b01dbf413c9f54d71e294ed2e9a561f",
+      "assembly_sha256": "c217335ffffd75a8db7b4b5fd06f3c1a845a78324f370253c2c74898e10a10d9",
+      "elf_bytes": 956
+    },
+    "add-f32": {
+      "elf_sha256": "69379d745a8ba5d2e56669c16487b17c55af88fea753cd412149824decf7b778",
+      "assembly_sha256": "bf35a586dd5e12bbb78a317d93a7ee504d7a27b339ff773afc837db0197b0e06",
+      "elf_bytes": 2940
+    },
+    "sub-f32": {
+      "elf_sha256": "ca5f6a3ecf857b295aa6ef4859551c9756481f74ade4015df9f2572e09109613",
+      "assembly_sha256": "ea17471b3d449c65eab494a02b9bb875c4196306e119cc4ae221c39f6136d8a5",
+      "elf_bytes": 3052
+    },
+    "mul-f32": {
+      "elf_sha256": "e15acaaa91a38c4dcac0e25a536acd42f7ab97bb4874ada9725eb9448f06f864",
+      "assembly_sha256": "218a2038903ff7d68c0e469e865636d3310876d5e03cc14d71f40158559a454d",
+      "elf_bytes": 3580
+    },
+    "div-f32": {
+      "elf_sha256": "14fe3422abfebb76a4392bba653226c9153fe5fcdae2fa320e18e4da3fb40bb3",
+      "assembly_sha256": "0644d58ddd7753b6f5be7b9a07a133f8508c7dd497a2f732840db58e5a083b4c",
+      "elf_bytes": 1932
+    },
+    "cast-f32": {
+      "elf_sha256": "0e71653de2c5cb0cb2cfdc63671ab867ea5246ae2323b6b823463e23356aa0d0",
+      "assembly_sha256": "ff0eef40116188ecf60075f50043966e64fddcceeb4f6b40b2efb9e320652225",
+      "elf_bytes": 1308
+    },
+    "sign-f32": {
+      "elf_sha256": "1cceef654b1d14b44b3a13bd39b47f9a90cbfb4d5934ac2f69961cb8b23a9d4c",
+      "assembly_sha256": "b1fdd5b6eeaec5b40b70ea7dc1f368b8d80c8b619f51d961b0a7711c58902fd5",
+      "elf_bytes": 988
+    }
+  }
+}

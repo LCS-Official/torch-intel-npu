@@ -1,0 +1,45 @@
+name: Offline source checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify published source payload
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        run: |
+          python -B tools/export_source_release.py --verify .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install core test dependencies
+        run: |
+          python -m pip install --no-cache-dir -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run offline tests without NPU hardware
+        run: |
+          $env:PYTHONPATH = "$PWD;$PWD\npunlock\python"
+          python -B -m unittest test_torch_npu_geometry test_torch_npu_lowbit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B -m unittest discover -s npunlock/tests/python -p test_python_api.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B tools/test_source_release.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
