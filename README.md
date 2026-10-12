@@ -1,5 +1,10 @@
 # PyTorch backend for Intel NPU4000
 
+<p align="center">
+  <a href="./README.md"><kbd><strong>简体中文</strong></kbd></a>&nbsp;&nbsp;
+  <a href="./README.en.md"><kbd>English</kbd></a>
+</p>
+
 让 Lunar Lake 的 Intel NPU 执行 PyTorch Tensor 运算、小网络训练与显式适配的模型推理。
 项目基于 [npunlock](https://github.com/hsfzxjy/npunlock)，实现 `intel_npu` 设备后端、自定义 SHAVE 内核、
 冻结模型的 DPU 图执行，以及缓冲区、会话和编译图复用。
