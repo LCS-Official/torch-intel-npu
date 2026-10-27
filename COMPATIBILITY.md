@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-27，v0.2.0 Experimental Preview（纳入截至S45的累计改进）。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-28，v0.2.0 Experimental Preview（纳入截至S45的累计改进）。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -83,6 +83,13 @@
 | S44 | [w8_lowrank_quality.py](npunlock-probe/research/w8_lowrank_quality.py)及[审计](npunlock-probe/research/w8_lowrank_audit.py) | 可选W8＋FP16低秩修正、30层整网、固定独立回归/NLL/PPL/自主生成；尚未通过全部质量门槛，见[报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md) |
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
 | S48 | [量化前缀与输出校准](npunlock-probe/research/w8_output_quality.py)及[文本评测](npunlock-probe/research/w8_output_language.py) | 8种候选、独立CPU/NPU前向/KV/PPL/生成；候选未稳定改善不采用，见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md) |
+| S49 | [设备数值诊断与内筛](npunlock-probe/research/w8_device_quality.py) | 五层同输入down链、九配置/FP16的真实NPU内筛、冻结选择后独立前向/KV；结果及边界见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md) |
+
+## S49 设备数值诊断与NPU内部筛选
+
+新增真实NPU同输入诊断，固定五层检查主W8、两次低秩GEMM及相加；两次低秩矩乘误差约0.00009%–0.00074%，相加和普通FFN/融合层输出在本取样中逐项相等。门控输入和主W8投影差异更大，尚未分离gate/up/SiLU来源，不能直接宣称其中某项有错误。
+
+九种既有配置及FP16控制各在独立NPU进程评测8条/290个内部位置；设备选择仍为input-local（基线243→246/290），独立前向和KV复现S48有限收益与退化，不采用为默认。16个进程18,500次提交正常关闭，272项本地离线检查通过。没有生产代码、内核、默认参数、依赖或原生构建变化；文本证据仅引用相同哈希候选的S48结果，本轮未重跑PPL。协议、限制和复现见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md)。
 
 ## S48 W8量化前缀与输出校准研究
 
