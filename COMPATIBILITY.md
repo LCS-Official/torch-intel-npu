@@ -82,6 +82,13 @@
 | S43 | [torch_npu_flash_optimization_demo.py](torch_npu_flash_optimization_demo.py)及S42回归 | SHAVE常规算术热路径、FP32次正规数前反向、自动32/128或容量受限分块；预热/冷调用、math对照与边界见[报告](npunlock-probe/research/results/flash-optimization/REPORT.md) |
 | S44 | [w8_lowrank_quality.py](npunlock-probe/research/w8_lowrank_quality.py)及[审计](npunlock-probe/research/w8_lowrank_audit.py) | 可选W8＋FP16低秩修正、30层整网、固定独立回归/NLL/PPL/自主生成；尚未通过全部质量门槛，见[报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md) |
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
+| S48 | [量化前缀与输出校准](npunlock-probe/research/w8_output_quality.py)及[文本评测](npunlock-probe/research/w8_output_language.py) | 8种候选、独立CPU/NPU前向/KV/PPL/生成；候选未稳定改善不采用，见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md) |
+
+## S48 W8量化前缀与输出校准研究
+
+新增down实际量化输入校准、整块输出残差回归及固定低秩输入基回归，共8种候选，32条/2048行拟合、8条/290位置内部选择。整块方案在内部退化；最佳input-local在独立NPU前向多通过1处但平均/最大误差及KL变差，KV仍82/98，PPL28.037196→28.041923，八条生成与基线相同，故不采用。实际校准输入来自CPU精确W8参考；真实NPU用于独立验收，尚非设备激活校准。
+
+7个正式真机进程44,130次提交正常关闭，265项本地离线检查通过；没有生产后端、内核、默认配置、依赖或原生构建变化。数学方法、固定协议、数值对齐边界及复现见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md)。INT4/NF4整网及低位训练本轮未扩展。
 
 ## S45 缓存保护及低位边界
 
