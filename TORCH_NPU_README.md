@@ -1,5 +1,63 @@
 # Torch → Intel NPU：FP16 / FP32 与最小设备后端
 
+S42：新增原生SHAVE在线分块Attention与重计算Q/K/V梯度，可通过标准sdpa_kernel(FLASH_ATTENTION)显式选择，默认仍math；接入strided NestedTensor推理、默认Encoder、MHA/LayerNorm/复制和Nested SDPA。新增两枚有源码ELF，原64组及DLL/PYD不变。128×256测例省86%–88% Tensor峰值，但含编译冷测试约慢3倍；不宣称加速、jagged/Nested训练或通用FlashAttention支持。接口、实际范围与证据见[S42报告](npunlock-probe/research/results/flash-nested/REPORT.md)。
+
+S41：扩展原版HF Llama/GPT-2的有限模型迁移入口，补位置arange、整数cumsum/isin/标签padding、空KV拼接/梯度、RoPE部分视图取负及native MHA/Encoder空输入。共享参数按报告使用PyTorch交换转换选项；核心依赖、原生组件及ELF不变。具体推理/生成/训练对照和未认证范围见[S41报告](npunlock-probe/research/results/attention-migration/REPORT.md)，不表示任意HF模型或FlashAttention已支持。
+
+S40：可直接使用torch.amp.GradScaler("intel_npu")，通过仅针对该后端的构造适配保留提前导入别名和原CPU构造；梯度计算仍在NPU，缩放控制在CPU。支持iterable/dtype语义、Tensor新scale及状态恢复，旧专用入口保留。无新依赖或原生构建；单NPU/FP32主参数/普通优化器等边界见[S40报告](npunlock-probe/research/results/amp-standard/REPORT.md)。
+
+S39：补有界空batch/序列/头和零QK/V特征SDPA，保留mask零梯度/None及Dropout RNG语义；新增Tensor概率Bernoulli与NPU随机键排序randperm、Generator/out及重放。无需新依赖、原生构建或ELF；实际dtype/容量范围、验证和剩余限制见[S39报告](npunlock-probe/research/results/attention-rng-boundaries/REPORT.md)。
+
+S38：九dtype按1GiB字节预算分配；FP16/BF16/INT16最大536,870,912元素，BOOL/INT8/UINT8最大1,073,741,824。密集普通MaxPool改用内联SHAVE窗口和有序几何反向；配对输出直接按dtype写回。需要更新PYD和内核伴随文件，其他算子的专用工作区、存储1GiB及同步提交限制保留，具体最大形状与冷热吞吐见[S38报告](npunlock-probe/research/results/storage-shape/REPORT.md)。
+
+S37：大平面选择反向改用原始UINT32元数据，普通MaxPool与浮点极值不再受旧2²⁴单平面保护限制，改用当前dtype存储检查。新增selection-backward-u32 ELF，小尺寸路径及原62枚ELF保持不变；无需新依赖或DLL/PYD重建。实际大平面完整梯度及跨包累加见[S37报告](npunlock-probe/research/results/selection-capacity/REPORT.md)；单包、其他算子前向和吞吐边界仍需分别检查。
+
+S36：普通MaxPool1d/2d的空间输出保护扩大到16,777,216，解除旧总采样点限制；跨通道包与按平面组装的反向保留C内核单包/元数据保护。极值长轴索引由设备INT64恢复，不可微索引不再分配无用零梯度，窗口读取优先页对齐绑定。软件边界、真实数值与训练证据见[S36报告](npunlock-probe/research/results/pool-capacity/REPORT.md)；无新依赖或C/ELF/DLL/PYD构建。
+
+2026-10-24 S35：普通Conv2d以262,144个窗口/fold元素为路径选择预算，更早使用已有流式算法；FP32结果按对齐范围逐块写回，避免所有结果块长期堆积。实测3×3卷积后端分配峰值FP32为7.00→1.84MiB、FP16为7.35→1.63MiB，小窗口保持原路径。完整梯度、特殊几何与两步训练及剩余界限见[S35报告](npunlock-probe/research/results/conv-capacity/REPORT.md)。无新依赖、SHAVE ELF或DLL/PYD重建。
+
+2026-10-24 S34：Embedding超出原完整索引包时复用byte gather/selection backward，并按特征列拆分；sort/topk输入输出总量保护扩到16,777,216元素，原计算包和一般索引反向保护不变。无需新增依赖或重编已有S32组件；软件界限与实际验收分开记录，见[S34报告](npunlock-probe/research/results/index-capacity/REPORT.md)。卷积/池化及次序统计等专用界限仍需单独处理。
+
+2026-10-24 S33：冻结Linear/Transformer/SmolLM与矩形GEMM登记调用期弱引用重建工厂，可参与LRU；缓存增加512MiB图blob预算，超预算可重建图临时执行。prepared chain继续保留图对象，已覆盖四层decode和多路径重建。2.69亿参数网络通过两步FP32 AdamW，状态4.00GiB/后端峰值4.25GiB，抽样更新对照通过；耗时约35分钟，未认证训练加速或14GiB整网。已有S32组件无需构建或新依赖；下面S32“冻结图固定保留”由[S33报告](npunlock-probe/research/results/frozen-capacity/REPORT.md)与当前矩阵替代。
+
+2026-10-24 S32：单allocation上限1GiB，FP16/BF16逻辑Tensor最多512MiB；普通算子图采用1536项LRU，已准备的执行计划持有图直到最后使用者释放。自定义冻结图目前仍pinned，满缓存会明确拒绝。重建session DLL与Torch PYD，无新SHAVE ELF/依赖；以下旧容量与图保留策略以[S32报告](npunlock-probe/research/results/graph-capacity/REPORT.md)及当前兼容性矩阵为准。
+
+2026-10-24 S31：硬标签CE/NLL按完整行分块并重建反向mask，支持超过旧单packet的batch；常见稠密算子容量检查扩大，百万行NLL、超旧输出界限Conv2d及encoder FFN等验收见[报告](npunlock-probe/research/results/operator-capacity/REPORT.md)。保留类别/softmax行宽、浮点索引元数据和图缓存保护；复用原62枚ELF，无新增依赖或构建。
+
+2026-10-23 S30：按本机实用范围扩展容量。单allocation为512MiB，rank64不变；显式page-aligned范围绑定复用不同偏移，逐元素图按元素数复用，分块运算直接绑定输入/最终输出或逐块写回结果。旧完整缓冲区入口保持保护，图缓存仍为1536。测试与实际模型规模见[报告](npunlock-probe/research/results/memory-scale/REPORT.md)；约14GiB训练尚未实测认证，下面S26–S29的历史容量数字以S30为准。须重建session DLL及Torch PYD，不新增SHAVE内核或依赖。
+
+2026-10-23 S29：接通加权NLL/硬标签CE、可微软标签与权重CE、混合FP16/FP32及广播MSE、原生forward/backward/out接口，含空维度、版本保护和三步组合训练验收，见[报告](npunlock-probe/research/results/loss-extended/REPORT.md)。复用62枚resident ELF，不新增依赖或重建宿主组件；硬标签packet和一阶梯度等边界仍保留。下文历史的无权重/无软标签/同shape MSE限制以S29及当前兼容性矩阵为准。
+
+2026-10-23 S28：SDPA扩至非空rank2–64及不同rank广播，接通GQA/MQA与共享K/V梯度；attention矩阵改用当前存储上限检查，旧百万元素限制的实际跨越及训练验收见[报告](npunlock-probe/research/results/sdpa-extended/REPORT.md)。复用62枚既有resident ELF，不新增依赖或重建DLL/PYD；单行宽、因果query长度及图缓存仍有边界。
+
+2026-10-23 S27：长K矩乘用新SHAVE滚动补偿累加，避免完整partial堆叠；matmul扩至rank1–64及有界切片/广播只读视图，修复bmm空维度/零K与完整密集梯度目的的DMA复制。65539维Linear和5维matmul组合训练的FP16/FP32独立对照见[报告](npunlock-probe/research/results/matmul-workspace/REPORT.md)。新增一枚ELF，总数62；不重建宿主DLL/PYD、不新增依赖，S26容量及图缓存边界保留。
+
+2026-10-23 S26：存储上限256MiB、rank0–64；普通数学/归约/Linear与softmax行分块扩展，1704万参数Linear独立训练验收见[报告](npunlock-probe/research/results/capacity-model/REPORT.md)。旧环境需先重建session DLL再重建PYD；不新增SHAVE ELF或pip依赖，旧算子工作区和图缓存限制保留。
+
+2026-10-23 S25：普通Torch存储扩到64MiB/rank8；新增整数/BF16转换与部分运算、动态布尔/高级索引、非重叠NPU目的写入、公开gather/scatter与一阶梯度、混合dtype拼接及更多数学函数。210万参数网络完成FP16/FP32各两步独立CPU/NPU训练对照。见[S25报告](npunlock-probe/research/results/compat-foundation/REPORT.md)和[当前矩阵](COMPATIBILITY.md)。旧4MiB/百万元素描述属于历史阶段；冻结DPU、排序/统计等独立边界仍保留。需重建设备PYD；新增SHAVE ELF随源码提供，无新pip依赖。
+
+2026-10-22 S24：继续扩展五维/空Tensor、整数/BOOL排序和次序统计，以及3D卷积/插值/归一化/池化、抗锯齿、Unpool、padding/shuffle、Unfold/Fold及动态网格采样。见[完整范围与回归](npunlock-probe/research/results/vision-sort-extended/REPORT.md)。旧本地版本须重编设备PYD，新增SHAVE ELF随源码提供；无新pip依赖。只有验收矩阵内的有限支持，不能宣称全部视觉/排序配置或通用CUDA已经完成。
+
+2026-10-22 S23：本地新增有界1D/2D插值、GroupNorm/InstanceNorm、ConvTranspose1d/2d、浮点稳定sort/argsort、max/min值与索引和更大k路径，含一阶反向及常见原地激活组合。见[报告](npunlock-probe/research/results/vision-sort/REPORT.md)，其中保留含离散排序的整网严格轨迹边界及旧CPU显式scale前后向不一致配置的拒绝策略。这些旧缺口现由S24扩展；不是通用CUDA完成声明，无新依赖或C++重建。
+
+2026-10-21 S22：本地新增MaxPool1d/2d及空间INT64索引/一阶梯度、非view非叶张量的原地ReLU、k<=128的有界topk及长行候选合并。标准Conv2d/BN2d/Linear后的原地ReLU保留版本保护，见[报告](npunlock-probe/research/results/pool-topk/REPORT.md)；下方历史“无MaxPool/原地ReLU/topk”以[当前清单](COMPATIBILITY.md)为准。未增加OpenVINO依赖、C++重建或性能加速声明。
+
+2026-10-21 S21：本地新增argmax/argmin、可微amax/amin、有界0/1/2/正负无穷向量范数及标准非foreach梯度范数裁剪、浮点isnan/isinf/isfinite；见[报告](npunlock-probe/research/results/reduction-norm/REPORT.md)。两枚有源码的SHAVE行极值ELF处理首个tie/NaN与原始INT64索引，长行自动分块。通用容量、dtype、异步和CUDA生态边界保持不变；下方历史缺口以[当前清单](COMPATIBILITY.md)为准。
+
+2026-10-21 S20：本地新增有界gather/scatter_add/take_along_dim、平均/自适应平均池化、可微极值/限幅与Hardtanh/ReLU6，见[索引/池化报告](npunlock-probe/research/results/index-pool/REPORT.md)。索引保持设备INT64，新增SHAVE规范化及初始值累加语义；后文“不支持非全局池化/maximum无梯度”等历史限制以当前[兼容性矩阵](COMPATIBILITY.md)为准。MaxPool和无限制索引仍未实现。
+
+2026-10-21 S19：本地新增分组/深度Conv2d、Conv1d、任意合法轴softmax/log_softmax、空间/序列硬标签损失、label smoothing与rsub梯度，见[迁移接口报告](npunlock-probe/research/results/portability/REPORT.md)。本页按时间保留历史记录，下面旧的groups=1、最后一轴、无AMP等限制以当前[兼容性矩阵](COMPATIBILITY.md)为准。分组仍串行复用现有内核，无新增依赖或宿主重建。
+
+2026-10-20 S18：AMP卷积的CPU Half差异已完成分批舍入归因；六种局部几何、原SiLU及三卷积残差网络的四步独立FP32累加控制和checkpoint通过，见[报告](npunlock-probe/research/results/amp-conv/REPORT.md)。原生CPU Half严格差异仍保留，不能记为标准CPU轨迹全部通过；仅修复空scaler checkpoint的异常处理，现有计算内核不变。
+
+2026-10-20 S17：原生FP16 autocast及NPU专用torch.intel_npu.amp.GradScaler已接通，FP32主参数、设备梯度检查/反缩放、溢出跳步和MLP恢复见[AMP报告](npunlock-probe/research/results/amp/REPORT.md)。卷积严格FP32梯度仍有数值边界；标准torch.amp.GradScaler入口后由S40接通，BF16或任意模型AMP仍未认证。CPU只保存缩放/增长控制状态，更新需重编PYD；下方按时间保留的“无AMP支持”描述以本轮有限范围为准。
+
+2026-10-20 S16：新增原生C++ torch.Generator、SHAVE INT64 randint/random_及FP16/FP32 multinomial；支持有界随机token训练、采样与状态恢复，详见[离散RNG报告](npunlock-probe/research/results/discrete-rng/REPORT.md)。更新旧本地构建需运行build_torch_npu_device.ps1重编PYD；旧24字节RNG状态继续兼容。randperm及有限AMP后由S39/S17补子集；通用AMP及低位整网质量仍未补齐。
+
+2026-10-20本地兼容性更新：公开exp/log/tanh/sigmoid/SiLU/sqrt/rsqrt的一阶梯度与标准RMSNorm已接通，新增门控网络和有限标准Decoder迁移验收，见[数学/模型报告](npunlock-probe/research/results/unary-math/REPORT.md)。下方“sqrt无梯度/exp等未公开”等历史状态以当前[兼容性矩阵](COMPATIBILITY.md)为准；通用CUDA运行时、AMP和低位整网质量尚未解决。
+
+2026-10-19 本地RNG更新：已有SHAVE Philox、FP16/FP32 rand/randn、种子/状态与普通Dropout一阶梯度，见[RNG/Dropout报告](npunlock-probe/research/results/rng-dropout/REPORT.md)。本页下方按时间保留历史实现说明；其中“随机数未实现/无RNG状态”等旧记录不代表当前状态，当前支持边界以[兼容性矩阵](COMPATIBILITY.md)为准。
+
 2026-10-10 保留策略更新：按用户要求保留源码、内核运行/构建所需文件和文字报告，清理历史实验数组、编译图、日志与原始计时文件。
 历史报告中的原始文件链接可能已失效；其中结论是清理前的验收记录，重新复算需要重跑对应实验。
 最新结果见 [CPU/GPU快路径与NPU图缓存报告](npunlock-probe/research/results/model-cross-device-followup/REPORT.md)，空间明细见 [工作区空间记录](WORKSPACE_STORAGE.md)。
@@ -830,6 +888,8 @@ print(z.device, m.cpu())  # intel_npu:0 tensor(44.)
 除初始 .to("intel_npu") 和最终 .cpu()，这条链路不复制主机载荷。
 首次使用仍需编译静态图，之后复用同一上下文的图会话。
 
+2026-10-20转换图复用：完整连续绑定通过原有验证后，FP16↔FP32内部按元素数编译一维图，并将结果恢复为调用方形状。scalar、out及大张量分块保留原契约；SHAVE转换和half位压紧公式不变。这减少不同shape重复编译，单次转换的提交数不变，见[报告](npunlock-probe/research/results/cast-reuse/REPORT.md)。
+
 导入 torch_intel_npu 注册保留的 PrivateUse1 设备槽，已有其他后端占用时拒绝。
 它没有替换 Tensor 类、伪造 device 属性或将 CPU Storage 重新标记为 NPU。
 empty/empty_strided 通过 C++ c10::Allocator 调用 zeMemAllocShared；
@@ -852,11 +912,11 @@ transpose/permute 输入。非零 offset、裁切、扩展重复或不能覆盖�
 | 视图与转置 | t、transpose、permute、detach 保留共享 Storage；完整密集排列可自动物化；empty_strided/clone/copy_/梯度累加/SGD 支持密集排列，DMA 保留原始位模式 |
 | 矩阵乘法 | 同 dtype 二维矩阵的 @、torch.mm、torch.matmul，允许密集转置；FP32 计算，按 M/N/K 分块；输入和输出各 <=1,048,576 项 |
 | 带偏置矩阵 / Linear | addmm 支持实数 alpha/beta 和偏置广播；nn.Linear/F.linear 支持 rank 1–4 输入，FP32 累加及加偏置后再转换输出 |
-| 卷积 | NCHW Conv2d；groups=1，支持 stride/padding/dilation 与 bias；输入/权重/输出各最多 1,048,576 项；窗口或折叠超过上限时采用流式前向/反向，受编译布局和缓存图上限约束 |
+| 卷积 | NCHW Conv2d/NCL Conv1d；S19支持合法分组与depthwise，支持stride/padding/dilation和bias；输入/权重/输出各最多1,048,576项；窗口或折叠超过上限时采用流式前向/反向，受编译布局和缓存图上限约束；转置卷积/Conv3d未支持 |
 | BatchNorm / 池化 | NCHW BatchNorm2d，FP32 统计/梯度；标准模块设置 track_running_stats=False；AdaptiveAvgPool2d(1) |
 | 一阶训练 | 算术、sum/mean、二维矩阵、addmm、Linear、Conv2d、ReLU、BatchNorm、全局平均池化、同 shape/dtype MSELoss；标准 SGD 基础更新 |
 | 输出复用 | 算术、归约、矩阵乘法 out=，须精确匹配结果 shape/dtype，禁止输出别名输入；可双缓冲交替迭代 |
-| 提交 | 至多 512 个编译图，保留至 shutdown；新形状超限明确拒绝，共享同一上下文；同步 fence、串行提交 |
+| 提交 | S13至多1,536个编译图，保留至shutdown；新形状超限明确拒绝，共享同一上下文；同步fence、串行提交 |
 
 不支持向量/批量矩阵乘法、任意步长/裁切 NPU 输入、任意 in-place 算术、
 随机数、二阶 autograd、torch.compile 设备路径、未实现算子的完整模型、异步 stream/event、
@@ -953,7 +1013,7 @@ CPU 容差检查；每步 CPU 权重重设为当前 NPU 权重，不认证独立
 低层离线校验共 43 项通过。各回归报告保存为 torch-npu-*-large-regression-pass.json。
 
 这仍是分块正确性路径，不代表性能加速或可使用整个约 17.9 GiB 预算。
-rank<=4、每 Tensor 1,048,576 项、编译布局和 512 个缓存图的限制仍明确报错。
+rank<=4、每 Tensor 1,048,576 项、编译布局和有界缓存图的限制仍明确报错；缓存图数量从历史512项在S13调整到1,536项，运行中不淘汰。
 较大形状仍需实际验证，不能只按输入分配大小判断可训练。
 
 ### K 轴分块与流式卷积训练
@@ -1310,7 +1370,7 @@ CPU 参考，验证同一权重下的前向、全部梯度和更新。已定位�
 
 旧的 128 项图 LRU 在本机扩大训练时可重复触发设备丢失；改成 U8 广播不能解除，
 64 项缓存则更早失败。保留图至 shutdown 后同样的矩阵/卷积测试通过。当前作为
-保守规避，将图缓存设为至多 512 项并取消运行中淘汰；超限时要求新进程，不自动
+保守规避，历史上将图缓存设为至多512项并取消运行中淘汰；S13因标准较长序列模型触及数量上限改为1,536项，仍保留至shutdown。超限时要求新进程，不自动
 重试失败上下文。驱动内部原因尚未确认。失败与通过报告均保留在 research/results；
 该规避不表示已修复 Intel 驱动本身。
 

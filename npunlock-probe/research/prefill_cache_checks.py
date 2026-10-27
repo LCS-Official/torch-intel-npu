@@ -44,8 +44,8 @@ def main():
         assert identity()[1]==digest;layer._weights[name]=(data,wshape);checks.append('dynamic gamma excluded')
         with patch.dict(os.environ,NPUNLOCK_GRAPH_CACHE=''):assert identity() is None
         checks.append('disabled cache unchanged')
-        with patch.object(layer,'_mode','w8a16'):assert identity() is None
-        checks.append('quantized path unchanged')
+        with patch.object(layer,'_mode','unsupported'):assert identity() is None
+        checks.append('unsupported precision bypass')
         assert cache.prefill_cache_graph(layer,shape,kernel,lambda:None) is None
         checks.append('custom compiler bypass')
         original=smol.FrozenSmolLayer.graph

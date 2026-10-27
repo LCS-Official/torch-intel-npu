@@ -25,14 +25,8 @@ def _tile(a, b, cache, start, column, replicas):
     m, k, n = a.shape[0], a.shape[1], b.shape[1]
     capacity = rect_gemm_capacity((m, k, n))
     key = ('rect_gemm_prototype' if replicas==4 else 'rect_gemm_eight', 'f32', (capacity,))
-    if key not in npu._sessions:
-        if len(npu._sessions) >= npu._MAX_SESSIONS:
-            raise RuntimeError('NPU graph cache is full; start a new process')
-        program = compile_rect_gemm((m, k, n), _kernel(replicas), libraries=npu._native,replicas=replicas)
-        session = npu._native.create_inference_session(program.graph_blob,
-            timeout_ms=10000, parent=npu._root_session)
-        npu._sessions[key] = session, program
-        npu._session_creations += 1
+    factory=lambda:compile_rect_gemm((m,k,n),_kernel(replicas),libraries=npu._native,replicas=replicas)
+    npu._register_graph_factory(key,factory)
     packed = []
     for tag, parts in enumerate(([*[npu._scalar(v, torch.float32) for v in (12345, m, k, n)], a.view(-1)], [b.view(-1)])):
         cache_key = ('a', start, n, capacity) if tag == 0 else ('b', column, capacity)

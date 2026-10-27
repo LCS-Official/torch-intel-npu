@@ -97,7 +97,7 @@ def execute(case):
     def contracts():
         x = torch.empty(65537, device='intel_npu')
         before = npu.stats()['npu_calls']
-        actions = {'allocation_bound': lambda: torch.empty(npu.MAX_TENSOR_ELEMENTS+1, device='intel_npu'),
+        actions = {'allocation_bound': lambda: torch.empty(npu._storage_limit(torch.float32)+1, device='intel_npu'),
                    'alias_out': lambda: torch.neg(x, out=x)}
         for name, action in actions.items():
             try:

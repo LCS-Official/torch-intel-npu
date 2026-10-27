@@ -121,7 +121,7 @@ def export(root, output):
         if not path.resolve().is_relative_to(root.resolve()) or path.is_symlink() or path.suffix.lower() in FORBIDDEN:
             raise ValueError(f'Unsafe source member: {name}')
         data = path.read_bytes()
-        if re.search(rb'-----BEGIN (?:OPENSSH|RSA|EC) PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}', data):
+        if re.search(rb'-----BEGIN (?:OPENSSH|RSA|EC) PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|hf_[A-Za-z0-9]{30,}', data):
             raise ValueError(f'Possible credential in {name}; inspect before export')
         payload[name] = data
     record, patch = upstream_record(root, names, excluded)

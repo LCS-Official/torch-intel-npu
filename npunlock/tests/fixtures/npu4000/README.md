@@ -48,3 +48,12 @@ The f32 counterpart transports logical (1,5)->(3,5) FP32 values as FP16 storage
 words with physical shapes (1,5,2)->(3,5,2). It performs no numeric conversion.
 Both use the same hardware/driver/compiler profile; offline checks reject
 compute-task carriers and invalid broadcast dimensions.
+
+resident/int64-add.elf is built from resident_integer.c for an exact scalar
+INT64 counter. A single ReferenceSW Power invocation transports both words
+as raw F32 bits; SHAVE unsigned 32-bit addition and carry implement modulo-2^64
+arithmetic. No word is numerically converted to float. Default HW scheduling
+splits the pair and is rejected by compile_int64_counter.
+Rebuild only this kernel with npunlock-probe/research/build_integer_kernel.py,
+or include it in build_resident_kernels.py. The resident manifest covers its
+source and ELF/assembly hashes; proprietary build tools are not included.

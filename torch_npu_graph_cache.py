@@ -38,10 +38,11 @@ def prefill_cache_graph(layer,shape,kernel,compiler_factory):
     import npunlock as s
     import torch_npu_smollm as smol
     from npunlock.npu4000 import compile_fused_rmsnorm
-    if (not os.environ.get('NPUNLOCK_GRAPH_CACHE') or layer.mode!='fp16'
+    if (not os.environ.get('NPUNLOCK_GRAPH_CACHE') or layer.mode not in ('fp16','w8a16')
         or type(layer) is not smol.FrozenSmolLayer or compiler_factory is not compile_fused_rmsnorm
         or getattr(layer.graph,'__func__',None) is not smol._PREFILL_GRAPH
-        or s.serialize_ir is not smol._PREFILL_SERIALIZER):return None
+        or s.serialize_ir is not smol._PREFILL_SERIALIZER
+        or (layer.mode=='w8a16' and smol.weight_graph is not smol._PREFILL_WEIGHT_GRAPH)):return None
     shape=layer._shape(shape);rows=shape[0]*shape[1]
     inputs=[s.input('x',shape=shape,dtype='f16'),
             *[s.input(name,shape=(max(2,rows),576),dtype='f16') for name in ('gamma','ffn_gamma')]]
@@ -56,6 +57,21 @@ def prefill_cache_graph(layer,shape,kernel,compiler_factory):
         # Norm weights are runtime inputs, so different gamma values may share a graph.
         if len(wshape)!=2:continue
         digest.update(json.dumps((name,wshape,len(data))).encode());digest.update(data)
+    if layer.mode=='w8a16':
+        digest.update(json.dumps(dict(mode=layer.mode,protected=sorted(layer.fp16_projections)),sort_keys=True).encode())
+        lowbit=importlib.import_module('torch_npu_lowbit')
+        digest.update(hashlib.sha256(Path(lowbit.__file__).read_bytes()).digest())
+        for name,weight in sorted(layer._packed.items()):
+            if name in layer.fp16_projections:continue
+            digest.update(json.dumps((name,weight.shape,weight.format,weight.group_size,len(weight.data),len(weight.scales))).encode())
+            digest.update(weight.data);digest.update(weight.scales)
+        corrections=getattr(layer,'_corrections',{})
+        if corrections:
+            helper=importlib.import_module('torch_npu_lowbit_correction')
+            digest.update(hashlib.sha256(Path(helper.__file__).read_bytes()).digest())
+            for name,factors in sorted(corrections.items()):
+                digest.update(json.dumps((name,factors.shape,factors.rank,len(factors.down),len(factors.up))).encode())
+                digest.update(factors.down);digest.update(factors.up)
     for data in (layer._cos,layer._sin,kernel):
         digest.update(len(data).to_bytes(8,'little'));digest.update(data)
     return graph,digest.digest()

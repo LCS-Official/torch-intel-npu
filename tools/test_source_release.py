@@ -10,6 +10,14 @@ import export_source_release as exporter
 
 
 class ExportTests(unittest.TestCase):
+    def test_export_rejects_fine_grained_github_credentials_before_writing(self):
+        with tempfile.TemporaryDirectory(prefix='source-release-secret-test-', dir=exporter.ROOT) as name:
+            root=Path(name);(root/'code.py').write_text('github_pat_'+'a'*70,encoding='utf-8')
+            target=root/'source-release-refused'
+            with patch.object(exporter,'selection',return_value=(['code.py'],[])):
+                with self.assertRaisesRegex(ValueError,'Possible credential'):exporter.export(root,target)
+            self.assertFalse(target.exists())
+
     def test_patch_preserves_missing_final_newline(self):
         with tempfile.TemporaryDirectory(prefix='source-release-patch-test-', dir=exporter.ROOT) as name:
             root = Path(name).resolve()

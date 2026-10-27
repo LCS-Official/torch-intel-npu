@@ -98,6 +98,12 @@ typedef struct graphinfer_shared_tensor {
   graphinfer_shared_buffer *buffer;
 } graphinfer_shared_tensor;
 
+/* A borrowed byte range of a shared tensor's owning allocation. */
+typedef struct graphinfer_tensor_range {
+  size_t offset;
+  size_t size;
+} graphinfer_tensor_range;
+
 /* Bindings and sessions are borrowed until the synchronous chain returns. */
 typedef struct graphinfer_chain_entry {
   uint32_t struct_size;
@@ -168,6 +174,16 @@ NPUNLOCK_GRAPHINFER_API npunlock_status
 graphinfer_session_infer(graphinfer_session *session, const graphinfer_shared_tensor *inputs,
                          size_t input_count, const graphinfer_shared_tensor *outputs,
                          size_t output_count, graphinfer_session_infer_result *result);
+
+/* Explicit range entry point; the original infer/chain contracts remain strict.
+ * Each range must match its graph argument size, stay within its owning buffer,
+ * and start at a 4096-byte boundary. Owning buffers must outlive the synchronous
+ * call. Output byte ranges cannot overlap any other graph argument. */
+NPUNLOCK_GRAPHINFER_API npunlock_status graphinfer_session_infer_ranges(
+    graphinfer_session *session, const graphinfer_shared_tensor *inputs,
+    const graphinfer_tensor_range *input_ranges, size_t input_count,
+    const graphinfer_shared_tensor *outputs, const graphinfer_tensor_range *output_ranges,
+    size_t output_count, graphinfer_session_infer_result *result);
 
 /* Execute 1..4 distinct graphs in order in one context. Validate all bindings
  * before execution; outputs cannot overwrite an earlier input/output. A later

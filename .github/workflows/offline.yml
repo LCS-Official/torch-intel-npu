@@ -37,7 +37,7 @@ jobs:
       - name: Run offline tests without NPU hardware
         run: |
           $env:PYTHONPATH = "$PWD;$PWD\npunlock\python"
-          python -B -m unittest test_torch_npu_geometry test_torch_npu_lowbit
+          python -B -m unittest discover -s . -p 'test_torch_npu*.py'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B -m unittest discover -s npunlock/tests/python -p test_python_api.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

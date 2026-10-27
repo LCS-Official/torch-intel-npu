@@ -449,11 +449,11 @@ def execute(quick, models_only):
         w = torch.ones(1, 1, 3, 3).to('intel_npu').requires_grad_()
         actions = {
             'groups': lambda: torch.nn.functional.conv2d(x, w, groups=2),
-            'transposed': lambda: torch.nn.functional.conv_transpose2d(x, w),
-            'oversized': lambda: torch.nn.functional.conv2d(torch.ones(1, 16, 96, 96).to('intel_npu'),
-                                                            torch.ones(128, 16, 3, 3).to('intel_npu')),
+            'transposed_output_padding': lambda: torch.nn.functional.conv_transpose2d(x, w, output_padding=1),
+            'oversized': lambda: torch.nn.functional.conv2d(torch.ones(1, 16, 384, 384).to('intel_npu'),
+                                                            torch.ones(npu.MAX_DMA_ELEMENTS//(382*382)+1, 16, 3, 3).to('intel_npu')),
             'wrong_bias': lambda: torch.nn.functional.conv2d(x, w, torch.ones(2).to('intel_npu')),
-            'mse_broadcast': lambda: torch.nn.functional.mse_loss(x, torch.ones(1).to('intel_npu')),
+            'mse_incompatible_broadcast': lambda: torch.nn.functional.mse_loss(x, torch.ones(3).to('intel_npu')),
             'cpu_training_scalar_tensor': lambda: x * torch.tensor(2., requires_grad=True),
             'batchnorm_single_value': lambda: torch.nn.functional.batch_norm(
                 torch.ones(1, 2, 1, 1).to('intel_npu'), None, None, training=True),
@@ -461,7 +461,7 @@ def execute(quick, models_only):
                 torch.ones(2).to('intel_npu'), training=True),
             'batchnorm_eval_without_buffers': lambda: torch.nn.functional.batch_norm(x, None, None),
             'batchnorm_negative_eps': lambda: torch.nn.functional.batch_norm(x, None, None, training=True, eps=-1.),
-            'unsupported_adaptive_pool_size': lambda: torch.nn.functional.adaptive_avg_pool2d(x, (2, 2)),
+            'empty_adaptive_pool_output': lambda: torch.nn.functional.adaptive_avg_pool2d(x, (0, 8)),
         }
         before = npu.stats()['npu_calls']
         for name, action in actions.items():
@@ -474,7 +474,7 @@ def execute(quick, models_only):
         assert npu.stats()['npu_calls'] == before
         capacity = npu._MAX_SESSIONS
         try:
-            npu._MAX_SESSIONS = len(npu._sessions)
+            npu._MAX_SESSIONS = 0
             try:
                 torch.relu(torch.ones(19, 23).to('intel_npu'))
             except RuntimeError as error:

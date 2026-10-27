@@ -36,3 +36,8 @@ Full terms are retained in LICENSES/Intel-Firmware-Headers-MIT.txt.
 
 See THIRD_PARTY_NOTICES.md for affected files and modifications, and
 REFERENCES.md for design references, runtime dependencies and validation tools.
+
+The mixed LayerNorm Welford ordering in resident_layernorm.c and the research
+emulator adapts PyTorch moments_utils.h under BSD-3-Clause. PyTorch copyright
+notices and full terms are retained in LICENSES/PyTorch.txt. The SHAVE integer
+fused operation and the host device integration are original implementations.

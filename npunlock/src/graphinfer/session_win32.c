@@ -15,7 +15,7 @@
 #include "workers/level_zero_min.h"
 
 #define SESSION_MAX_ARGUMENTS 64u
-#define SESSION_MAX_TENSOR_SIZE (64u * 1024u * 1024u)
+#define SESSION_MAX_TENSOR_SIZE (1024u * 1024u * 1024u)
 #define SESSION_PAGE_SIZE 4096u
 
 typedef struct session_argument {
@@ -822,7 +822,8 @@ static bool binding_name_matches(const graphinfer_shared_tensor *binding,
 
 static npunlock_status collect_bindings(graphinfer_session *session,
                                         const graphinfer_shared_tensor *bindings,
-                                        size_t binding_count, uint32_t required_type,
+                                        size_t binding_count, const graphinfer_tensor_range *ranges,
+                                        uint32_t required_type,
                                         void **allocations, bool *matched,
                                         npunlock_diagnostic *diagnostic) {
   size_t binding_index;
@@ -864,13 +865,19 @@ static npunlock_status collect_bindings(graphinfer_session *session,
     implementation = (shared_buffer_impl *)binding->buffer->implementation;
     if (implementation == NULL || implementation->session->context_owner != session->context_owner ||
         binding->buffer->data != implementation->allocation ||
-        binding->buffer->size != implementation->size ||
-        implementation->size != argument->data_size) {
+        binding->buffer->size != implementation->size) {
       return npunlock_set_diagnostic(diagnostic, NPUNLOCK_STATUS_INVALID_ARGUMENT,
                                      "graphinfer.session",
                                      "shared buffer has the wrong owner or byte size");
     }
-    allocations[argument->index] = implementation->allocation;
+    const size_t offset = ranges == NULL ? 0 : ranges[binding_index].offset;
+    const size_t size = ranges == NULL ? implementation->size : ranges[binding_index].size;
+    if (offset % SESSION_PAGE_SIZE != 0 || size != argument->data_size ||
+        offset > implementation->size || size > implementation->size - offset) {
+      return npunlock_set_diagnostic(diagnostic, NPUNLOCK_STATUS_INVALID_ARGUMENT,
+                                     "graphinfer.session", "invalid or unaligned shared tensor range");
+    }
+    allocations[argument->index] = (uint8_t *)implementation->allocation + offset;
     matched[argument->index] = true;
   }
   return NPUNLOCK_STATUS_OK;
@@ -922,9 +929,11 @@ static npunlock_status execute_allocations_locked(graphinfer_session *session,
   return submit(session, false, diagnostic);
 }
 
-npunlock_status graphinfer_session_infer(graphinfer_session *session,
-                                         const graphinfer_shared_tensor *inputs, size_t input_count,
+static npunlock_status session_infer_impl(graphinfer_session *session,
+                                         const graphinfer_shared_tensor *inputs,
+                                         const graphinfer_tensor_range *input_ranges, size_t input_count,
                                          const graphinfer_shared_tensor *outputs,
+                                         const graphinfer_tensor_range *output_ranges,
                                          size_t output_count,
                                          graphinfer_session_infer_result *result) {
   void *allocations[SESSION_MAX_ARGUMENTS] = {0};
@@ -948,11 +957,11 @@ npunlock_status graphinfer_session_infer(graphinfer_session *session,
                                      "session is closed or context failed; restart process");
     goto done;
   }
-  status = collect_bindings(session, inputs, input_count, NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_INPUT,
+  status = collect_bindings(session, inputs, input_count, input_ranges, NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_INPUT,
                             allocations, matched, &result->diagnostic);
   if (status == NPUNLOCK_STATUS_OK) {
     status =
-        collect_bindings(session, outputs, output_count, NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT,
+        collect_bindings(session, outputs, output_count, output_ranges, NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT,
                          allocations, matched, &result->diagnostic);
   }
   if (status != NPUNLOCK_STATUS_OK) {
@@ -966,9 +975,11 @@ npunlock_status graphinfer_session_infer(graphinfer_session *session,
       goto done;
     }
     for (previous = 0; previous < index; ++previous) {
-      if (allocations[previous] == allocations[index] &&
-          (session->arguments[previous].type == NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT ||
-           session->arguments[index].type == NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT)) {
+      const uintptr_t a = (uintptr_t)allocations[previous], b = (uintptr_t)allocations[index];
+      const bool overlap = a <= b ? b-a < session->arguments[previous].data_size :
+                                   a-b < session->arguments[index].data_size;
+      if (overlap && (session->arguments[previous].type == NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT ||
+                      session->arguments[index].type == NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT)) {
         status = npunlock_set_diagnostic(&result->diagnostic, NPUNLOCK_STATUS_INVALID_ARGUMENT,
                                          "graphinfer.session", "output aliases another graph argument");
         goto done;
@@ -980,6 +991,29 @@ npunlock_status graphinfer_session_infer(graphinfer_session *session,
 done:
   LeaveCriticalSection(session_lock(session));
   return status;
+}
+
+npunlock_status graphinfer_session_infer(graphinfer_session *session,
+    const graphinfer_shared_tensor *inputs, size_t input_count,
+    const graphinfer_shared_tensor *outputs, size_t output_count,
+    graphinfer_session_infer_result *result) {
+  return session_infer_impl(session, inputs, NULL, input_count, outputs, NULL, output_count, result);
+}
+
+npunlock_status graphinfer_session_infer_ranges(graphinfer_session *session,
+    const graphinfer_shared_tensor *inputs, const graphinfer_tensor_range *input_ranges,
+    size_t input_count, const graphinfer_shared_tensor *outputs,
+    const graphinfer_tensor_range *output_ranges, size_t output_count,
+    graphinfer_session_infer_result *result) {
+  if (input_ranges == NULL || output_ranges == NULL) {
+    if (result == NULL) return NPUNLOCK_STATUS_INVALID_ARGUMENT;
+    memset(result, 0, sizeof(*result));
+    result->struct_size = sizeof(*result);
+    return npunlock_set_diagnostic(&result->diagnostic, NPUNLOCK_STATUS_INVALID_ARGUMENT,
+                                   "graphinfer.session", "range arrays are required");
+  }
+  return session_infer_impl(session, inputs, input_ranges, input_count,
+                           outputs, output_ranges, output_count, result);
 }
 
 static bool copied_input_matches(const graphinfer_input *input, const session_argument *argument) {
@@ -1141,10 +1175,10 @@ npunlock_status graphinfer_session_infer_chain(
       goto invalid;
     for (j = 0; j < i; ++j) if (entries[j].session == s) goto invalid;
     cold |= !s->initialized || !s->list || !s->fence;
-    status = collect_bindings(s, entries[i].inputs, entries[i].input_count,
+    status = collect_bindings(s, entries[i].inputs, entries[i].input_count, NULL,
         NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_INPUT, allocations[i], matched[i], &result->diagnostic);
     if (status == NPUNLOCK_STATUS_OK)
-      status = collect_bindings(s, entries[i].outputs, entries[i].output_count,
+      status = collect_bindings(s, entries[i].outputs, entries[i].output_count, NULL,
           NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT, allocations[i], matched[i], &result->diagnostic);
     if (status != NPUNLOCK_STATUS_OK) goto done;
     for (j = 0; j < s->argument_count; ++j) {

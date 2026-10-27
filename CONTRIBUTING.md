@@ -10,15 +10,22 @@
 ```powershell
 $env:PYTHONPATH = "$PWD;$PWD\npunlock\python"
 $env:PYTHONDONTWRITEBYTECODE = '1'
-python -B -m unittest test_torch_npu_geometry test_torch_npu_lowbit
+python -B -m unittest discover -s . -p 'test_torch_npu*.py'
 python -B -m unittest discover -s npunlock/tests/python -p test_python_api.py
 python -B tools/test_source_release.py
 ```
 
-当前共 45 项，不需要 NPU、模型、MoviTools 或 OpenVINO。GitHub 的
-[离线工作流](.github/workflows/offline.yml) 在 Windows/Python 3.12 执行同一组命令；
-使用官方 [checkout](https://github.com/actions/checkout/tree/v6) 与
-[setup-python](https://github.com/actions/setup-python/tree/v6)。云端离线通过不能代替真实 NPU 验证。
+工作流自动发现所有根目录test_torch_npu*.py，再运行npunlock Python API和源码导出检查。
+核心检查不需要NPU、模型、MoviTools或OpenVINO；需要safetensors的模型测试在依赖缺失时明确跳过。
+安装requirements-models.txt后可扩展可选测试覆盖；通过与跳过数量见[本版验收](RELEASE_READINESS.md)。
+GitHub的[离线工作流](.github/workflows/offline.yml)在Windows/Python3.12运行这些入口；云端通过不能代替真实NPU验证。
+
+## 分支、提交与历史
+
+按一个修复或实验方向创建分支；每个完整、可解释的改动单独commit，记录验证结果，并在每轮工作结束时push。
+通过验收后合入main，版本里程碑使用tag和Release。历史依赖commit/tag，不为每个版本复制整个目录。
+未合并但仍需回忆的实验应保留分支或实验tag；生产默认只纳入通过约定数值/兼容性门槛的方案。
+公开仓库只保存精简源码、自有内核伴随文件、测试和报告；模型、环境、SDK、blob和原始数组继续排除。
 
 ## 改动如何验收
 
