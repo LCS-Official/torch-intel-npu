@@ -143,13 +143,15 @@ def execute(quick):
         assert npu.stats()['live_buffers'] == live
         torch.testing.assert_close(view.cpu(), torch.arange(6, dtype=torch.float32).view(2, 3))
         offset = torch.as_strided(view, (3,), (1,), 1)
+        torch.testing.assert_close(offset.cpu(), torch.arange(1,4,dtype=torch.float32))
         try:
-            offset.cpu()
+            npu._C.copy(torch.empty(3,dtype=torch.float32), offset, False)
         except (ValueError, RuntimeError) as error:
             assert "offset-zero" in str(error)
         else:
             raise AssertionError("Offset view accepted unsupported native binding")
-        return {"same_storage": True, "base_deleted_view_valid": True, "offset_binding_rejected": True}
+        return {"same_storage": True, "base_deleted_view_valid": True,
+                "offset_read_materialized": True, "offset_binding_rejected": True}
 
     def cast_precision():
         import numpy as np
@@ -606,29 +608,29 @@ def execute(quick):
         short = torch.tensor([1.]).to('intel_npu')
         grad = torch.tensor([1., 2.]).to('intel_npu').requires_grad_()
         actions = {
-            "unsupported_sin": lambda: torch.sin(x),
-            "unsupported_rng": lambda: torch.rand(2, device='intel_npu'),
-            "unsupported_batched_matmul": lambda: x.view(1, 1, 2) @ y.view(1, 2, 1),
+            "unsupported_asin": lambda: torch.asin(x),
+            "unsupported_float_integer_rng": lambda: torch.randint(0, 10, (2,), dtype=torch.float32, device='intel_npu'),
+            "vector_matmul_inner_mismatch": lambda: x @ short,
             "incompatible_broadcast": lambda: x + torch.ones(3).to('intel_npu'),
-            "broadcast_oversized": lambda: torch.ones(1024, 1).to('intel_npu') + torch.ones(1, 1025).to('intel_npu'),
+            "broadcast_oversized": lambda: torch.ones(16384, 1).to('intel_npu') + torch.ones(1, npu.MAX_DMA_ELEMENTS//16384+1).to('intel_npu'),
             "complex_scalar": lambda: x + 1j,
             "cpu_mixed_input": lambda: x + torch.ones(2),
-            "alpha": lambda: torch.add(x, y, alpha=2),
+            "alpha_overflow": lambda: torch.add(x, y, alpha=1e50),
             "boolean_alpha": lambda: torch.add(x, y, alpha=True),
             "boolean_subtraction": lambda: x - True,
             "output_alias": lambda: torch.mul(x, y, out=x),
             "autograd_upload": lambda: torch.ones(2, requires_grad=True).to('intel_npu'),
             "float64": lambda: torch.empty(2, dtype=torch.float64, device='intel_npu'),
-            "int8": lambda: torch.empty(2, dtype=torch.int8, device='intel_npu'),
-            "empty": lambda: torch.empty(0, device='intel_npu'),
-            "oversized": lambda: torch.empty(npu.MAX_TENSOR_ELEMENTS+1, device='intel_npu'),
-            "rank5": lambda: torch.empty((1, 1, 1, 1, 1), device='intel_npu'),
+            "complex64": lambda: torch.empty(2, dtype=torch.complex64, device='intel_npu'),
+            "negative_dimension": lambda: torch.empty(-1, device='intel_npu'),
+            "oversized": lambda: torch.empty(npu._storage_limit(torch.float32)+1, device='intel_npu'),
+            "rank65": lambda: torch.empty((1,)*(npu.MAX_RANK+1), device='intel_npu'),
             "factory_with_storage_holes": lambda: torch.empty_strided((2, 3), (1, 4), device='intel_npu'),
             "factory_with_overlapping_storage": lambda: torch.empty_strided((2, 3), (1, 1), device='intel_npu'),
             "noncontiguous_upload_without_format": lambda: torch.ones(2, 3).t().to('intel_npu'),
             "device1": lambda: torch.empty(2, device='intel_npu:1'),
             "asynchronous_copy": lambda: x.to('cpu', non_blocking=True),
-            "unsupported_bfloat16": lambda: x.bfloat16(),
+            "unsupported_float64_cast": lambda: x.double(),
             "reduction_duplicate_axis": lambda: x.sum(dim=(0, 0)),
             "reduction_bad_axis": lambda: x.mean(dim=1),
             "reduction_int_dtype": lambda: x.sum(dtype=torch.int32),
@@ -638,7 +640,7 @@ def execute(quick):
             "reduction_output_alias": lambda: torch.mean(short, dim=0, keepdim=True, out=short),
             "matmul_inner_mismatch": lambda: x.view(1, 2) @ y.view(1, 2),
             "matmul_dtype_mismatch": lambda: x.view(1, 2) @ half.view(2, 1),
-            "matmul_oversized_output": lambda: torch.ones(1025, 1).to('intel_npu') @ torch.ones(1, 1024).to('intel_npu'),
+            "matmul_oversized_output": lambda: torch.ones(npu.MAX_DMA_ELEMENTS//16384+1, 1).to('intel_npu') @ torch.ones(1, 16384).to('intel_npu'),
             "matmul_out_alias": lambda: torch.mm(x.view(1, 2), torch.eye(2).to('intel_npu'), out=x.view(1, 2)),
             "division_rounding": lambda: torch.div(x, y, rounding_mode='floor'),
             "addmm_cpu_bias": lambda: torch.addmm(torch.ones(2), x.view(1, 2), torch.eye(2).to('intel_npu')),
@@ -648,10 +650,11 @@ def execute(quick):
             "addmm_coefficient_overflow": lambda: torch.addmm(y, x.view(1, 2), torch.eye(2).to('intel_npu'), alpha=1e50),
             "linear_bias_shape": lambda: torch.nn.functional.linear(x, y.view(1, 2), y),
             "linear_bad_weight": lambda: torch.nn.functional.linear(x, y),
-            "dense_partial_storage": lambda: x.as_strided((1,), (1,), 0).cpu(),
-            "dense_expanded_storage": lambda: short.as_strided((2,), (0,), 0).cpu(),
+            "destination_outside_storage": lambda: x.as_strided((3,), (1,), 0).copy_(torch.ones(3)),
+            "expanded_destination_storage": lambda: short.as_strided((2,), (0,), 0).copy_(torch.ones(2)),
         }
         before = npu.stats()['npu_calls']
+        rng_before = torch.intel_npu.get_rng_state()
         rejected = []
         for name, action in actions.items():
             try:
@@ -661,6 +664,7 @@ def execute(quick):
             else:
                 raise AssertionError(f"Accepted {name}")
         assert before == npu.stats()['npu_calls']
+        assert torch.equal(rng_before, torch.intel_npu.get_rng_state())
         return {"rejected": rejected, "npu_calls": 0}
 
     def threads():

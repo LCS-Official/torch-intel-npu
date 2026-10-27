@@ -355,11 +355,6 @@ class QuantizedLinear(torch.nn.Module):
                 _,xml,data = weight_graph(self.weight,batch,bias=self.bias,compact_groups=self.compact_groups,pad_batch=pad_batch,activation_scale=self.activation_scale)
                 self._keys[batch] = ('lowbit_linear',hashlib.sha256(xml+data).digest())
             key = self._keys[batch]
-            if key not in npu._sessions:
-                if len(npu._sessions) >= npu._MAX_SESSIONS:
-                    raise RuntimeError('NPU graph cache is full; start a new process')
-                program,_ = compile_weight(self.weight,batch,npu._native,bias=self.bias,compact_groups=self.compact_groups,pad_batch=pad_batch,activation_scale=self.activation_scale)
-                session = npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                npu._sessions[key] = session,program
-                npu._session_creations += 1
+            factory=lambda:compile_weight(self.weight,batch,npu._native,bias=self.bias,compact_groups=self.compact_groups,pad_batch=pad_batch,activation_scale=self.activation_scale)[0]
+            npu._register_graph_factory(key,factory)
             return npu._run(key,[value],(batch,self.weight.shape[0]),torch.float16)

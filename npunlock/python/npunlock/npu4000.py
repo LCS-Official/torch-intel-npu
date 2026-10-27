@@ -20,7 +20,32 @@ REDUCE_TEXT_SHA256 = {
     "ReduceMean": "b4d29126e77d745fa43305cb23f6dc3e5877ed44b8648dc03495e576be413dba",
 }
 MAX_ELEMENTS = 65536
-MAX_TENSOR_ELEMENTS = 1048576  # DMA/storage bound; custom SHAVE tasks remain <= MAX_ELEMENTS.
+MAX_TENSOR_ELEMENTS = 1048576  # Existing frozen DPU adapters retain their validated bounds.
+MAX_STORAGE_ELEMENTS = 16777216  # Legacy operator workspaces, including float metadata packets.
+MAX_ALLOCATION_BYTES = 1024 * 1024 * 1024
+MAX_DMA_ELEMENTS = MAX_ALLOCATION_BYTES // 4
+MAX_STORAGE_RANK = 64
+
+
+def compile_byte_packet(header, sizes, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """Pack static U32 metadata and raw device bytes into a complete SHAVE frame."""
+    import numpy as np
+    from . import Graph, input, op, constant
+    header, sizes = tuple(header), tuple(sizes)
+    if (not header or any(type(v) is not int or not 0 <= v < 2**32 for v in header) or
+            not sizes or any(type(v) is not int or v < 1 for v in sizes)):
+        raise ValueError('Byte packet requires U32 metadata and positive payload sizes')
+    total = 4*len(header)+sum(sizes)
+    words = (max(total, header[15] if len(header)==16 else 0)+7)//8*2
+    if words > MAX_ELEMENTS:
+        raise ValueError('Byte packet exceeds the complete SHAVE carrier')
+    inputs = [input(f'x{i}', shape=(1, size), dtype='u8') for i, size in enumerate(sizes)]
+    parts = [constant(np.array(header, dtype='<u4').view(np.uint8).reshape(1, -1)), *inputs]
+    if words*4 > total:
+        parts.append(constant(np.zeros((1, words*4-total), dtype=np.uint8)))
+    output = op('Concat', *parts, axis=1, _shape=(1, words*4), _dtype='u8', _name='y')
+    return compile_precision_graph(Graph(inputs, [output]), libraries=libraries, native_dir=native_dir,
+                                   timeout_ms=timeout_ms, dma_only=True)
 RELOCATION_NAMES = {0: "R_VPU_64", 4: "R_VPU_32", 17: "R_VPU_32_BIT_OR_B21_B26_UNSET",
                     18: "R_VPU_64_BIT_OR_B21_B26_UNSET"}
 
@@ -424,6 +449,149 @@ def compile_binary(shape, kernel_elf, *, dtype="f32", native_dir=None, timeout_m
         device_id=info.device_id, compiler_version=info.compiler_version, dtype=dtype)
     report["shape"] = list(x.shape)
     return replace(program, graph_blob=blob, patch_reports=(json.dumps(report).encode(),))
+
+
+def compile_int64_counter(kernel_elf, *, native_dir=None, timeout_ms=20_000, libraries=None):
+    """One complete two-word INT64 add; F32 is a raw-bit transport carrier."""
+    from . import Graph, input, op
+    if not isinstance(kernel_elf, bytes):
+        raise TypeError('INT64 counter kernel must be linked ELF bytes')
+    x, b = (input(name, shape=(2,), dtype='f32') for name in ('x', 'b'))
+    y = op('Power', x, b, _shape=(2,), _dtype='f32', _name='y')
+    program = compile_precision_graph(Graph([x, b], [y], name='int64_counter'),
+        native_dir=native_dir, timeout_ms=timeout_ms, libraries=libraries, reference_sw=True)
+    evidence = inspect(program.graph_blob, memref_count=3)
+    if (len(evidence['invocations']) != 1 or len(evidence['ranges']) != 1 or
+            any(ref['elements'] != 2 for task in evidence['invocations'] for ref in task.get('memrefs', []))):
+        raise ValueError('INT64 counter carrier must keep both words in a single invocation')
+    info = program.ir_provenance
+    blob, report = patch_binary_carrier(program.graph_blob, kernel_elf, vendor_id=info.vendor_id,
+        device_id=info.device_id, compiler_version=info.compiler_version, dtype='f32')
+    report.update(operation='int64_add_raw_words', scheduling='single_complete_pair', shape=[2])
+    return replace(program, graph_blob=blob, patch_reports=(json.dumps(report).encode(),))
+
+
+def compile_classification_rows(shape, kernel_elf, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """FP32 Power carrier keeping each classification row intact in one task."""
+    from . import Graph, input, op
+    shape = tuple(shape)
+    if (len(shape) != 2 or any(type(d) is not int or d < 1 for d in shape) or
+            prod(shape) > MAX_ELEMENTS or not isinstance(kernel_elf, bytes)):
+        raise ValueError('Classification carrier requires bounded complete rows and linked ELF bytes')
+    x, b = (input(name, shape=shape, dtype='f32') for name in ('x', 'b'))
+    y = op('Power', x, b, _shape=shape, _dtype='f32', _name='y')
+    program = compile_precision_graph(Graph([x, b], [y], name='classification_rows'), libraries=libraries,
+        native_dir=native_dir, timeout_ms=timeout_ms, reference_sw=True)
+    evidence = inspect(program.graph_blob, memref_count=3)
+    rows, width = shape
+    layouts = {(width, rows, 1, 1)}
+    if rows == 1:
+        layouts.add((1, 1, width, 1))
+    if (len(evidence['ranges']) != 1 or len(evidence['invocations']) != 1 or
+        any(len(task.get('memrefs', [])) != 3 or
+            any(tuple(ref['dims']) not in layouts or ref['elements'] != prod(shape) for ref in task['memrefs'])
+            for task in evidence['invocations'])):
+        actual = [[ref.get('dims') for ref in task.get('memrefs', [])] for task in evidence['invocations']]
+        raise ValueError(f'Classification carrier splits a row or changes its verified layout: {shape}, {actual}')
+    info = program.ir_provenance
+    blob, report = patch_binary_carrier(program.graph_blob, kernel_elf, vendor_id=info.vendor_id,
+        device_id=info.device_id, compiler_version=info.compiler_version, dtype='f32')
+    report.update(operation='classification_rows', shape=list(shape), scheduling='single_complete_rows')
+    return replace(program, graph_blob=blob, patch_reports=(json.dumps(report).encode(),))
+
+
+def mask_packet_spec(count, kind, code):
+    """Raw byte packet ABI: four F32 metadata words, payloads, 8-byte padding."""
+    if (any(type(v) is not int for v in (count, kind, code)) or not 1 <= count <= MAX_ELEMENTS or
+            not 0 <= kind <= 12 or code not in (0, 1, 2, 3) or kind >= 9 and code != 3):
+        raise ValueError('Invalid mask packet count/operator/storage code')
+    width = (4, 2, 8, 1)[code]
+    sizes = ((count, count*width, count*width) if kind == 6 else (count,) if kind in (8, 9) else
+             (count*width,) if kind == 7 else (count*width, count*width))
+    output = count*width if kind in (6, 8) else count
+    size = (max(16+sum(sizes), output)+7)//8*8
+    if size > MAX_ELEMENTS*4:
+        raise ValueError('Mask packet exceeds the complete SHAVE carrier bound')
+    return sizes, output, size//4
+
+
+def rng_packet_words(count):
+    if type(count) is not int or not 1 <= count <= MAX_ELEMENTS:
+        raise ValueError('RNG packet requires 1..65536 elements')
+    return (max(count, 16)+1)//2*2
+
+
+def compile_rng_packet(count, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """Dynamic seed/counter header, padded by byte DMA; no random host payload."""
+    import numpy as np
+    from . import Graph, input, op, constant
+    words = rng_packet_words(count)
+    header = input('header', shape=(1, 32), dtype='u8')
+    # Always enlarge the input: an identity graph has ambiguous input/output bindings.
+    y = op('Concat', header, constant(np.zeros((1, words*4-32), dtype=np.uint8)),
+           axis=1, _shape=(1, words*4), _dtype='u8', _name='y')
+    return compile_precision_graph(Graph([header], [y]), libraries=libraries, native_dir=native_dir,
+                                   timeout_ms=timeout_ms, dma_only=True)
+
+
+def discrete_packet_words(rows, columns=0, samples=1):
+    """64-byte RNG header, optional F32 weights, INT64 outputs and scratch."""
+    if (any(type(n) is not int for n in (rows, columns, samples)) or rows < 1 or columns < 0 or samples < 1 or
+            columns == 0 and samples != 1):
+        raise ValueError('Invalid discrete RNG packet dimensions')
+    words = max(18, 16+rows*columns, rows*columns+2*rows*samples+2)
+    words = (words+1)//2*2
+    if words > MAX_ELEMENTS:
+        raise ValueError('Discrete RNG packet exceeds 65536 words')
+    return words
+
+
+def compile_discrete_packet(rows, columns=0, samples=1, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """Byte-DMA packet packing; seed, bounds and weights are not converted."""
+    import numpy as np
+    from . import Graph, input, op, constant
+    words = discrete_packet_words(rows, columns, samples)
+    header = input('header', shape=(1, 64), dtype='u8')
+    inputs = [header]
+    if columns:
+        inputs.append(input('weights', shape=(1, rows*columns*4), dtype='u8'))
+    parts = list(inputs)
+    padding = words*4-64-rows*columns*4
+    if padding:
+        parts.append(constant(np.zeros((1, padding), dtype=np.uint8)))
+    y = op('Concat', *parts, axis=1, _shape=(1, words*4), _dtype='u8', _name='y')
+    return compile_precision_graph(Graph(inputs, [y]), libraries=libraries, native_dir=native_dir,
+                                   timeout_ms=timeout_ms, dma_only=True)
+
+
+def compile_mask_packet(count, kind, code, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """Pack mixed storage widths with byte DMA; no numeric conversion."""
+    import numpy as np
+    from . import Graph, input, op, constant
+    sizes, _, words = mask_packet_spec(count, kind, code)
+    inputs = [input(f'x{i}', shape=(1, size), dtype='u8') for i, size in enumerate(sizes)]
+    header = constant(np.array([count, kind, code, 0], dtype=np.float32).view(np.uint8).reshape(1, 16))
+    parts = [header, *inputs]
+    padding = words*4-16-sum(sizes)
+    if padding:
+        parts.append(constant(np.zeros((1, padding), dtype=np.uint8)))
+    y = op('Concat', *parts, axis=1, _shape=(1, words*4), _dtype='u8', _name='y')
+    return compile_precision_graph(Graph(inputs, [y]), libraries=libraries, native_dir=native_dir,
+                                   timeout_ms=timeout_ms, dma_only=True)
+
+
+def compile_classification_pack(rows, columns, *, libraries=None, native_dir=None, timeout_ms=20_000):
+    """Byte DMA packs logits, INT64 target and INT64 ignore_index without casts."""
+    from . import Graph, input, op
+    if (type(rows) is not int or type(columns) is not int or min(rows, columns) < 1 or
+            rows*(columns+4) > MAX_ELEMENTS):
+        raise ValueError('NLL packet exceeds the bounded row carrier')
+    x = input('x', shape=(rows, columns, 4), dtype='u8')
+    target = input('target', shape=(rows, 2, 4), dtype='u8')
+    ignore = input('ignore', shape=(rows, 2, 4), dtype='u8')
+    y = op('Concat', x, target, ignore, axis=1, _shape=(rows, columns+4, 4), _dtype='u8', _name='y')
+    return compile_precision_graph(Graph([x, target, ignore], [y]), libraries=libraries,
+        native_dir=native_dir, timeout_ms=timeout_ms, dma_only=True)
 
 
 def compile_rmsnorm(rows, kernel_elf, *, native_dir=None, timeout_ms=20_000, libraries=None, parallel=True):
@@ -1029,14 +1197,14 @@ def compile_broadcast(shape, target, *, dtype, libraries=None, native_dir=None, 
     """Materialize a static NumPy-style broadcast with NPU DMA, preserving bits."""
     import numpy as np
     from . import Graph, input, op, constant
-    if dtype not in ("f16", "f32"):
-        raise ValueError("Broadcast dtype must be f16/f32")
+    if dtype not in ("f16", "f32", "u8"):
+        raise ValueError("Broadcast dtype must be f16/f32/u8")
     x = input("x", shape=shape, dtype=dtype)
     target = tuple(target)
-    if (not 1 <= len(x.shape) <= len(target) <= 4 or prod(target) > MAX_TENSOR_ELEMENTS or
+    if (not 1 <= len(x.shape) <= len(target) <= 4 or prod(target) > MAX_ALLOCATION_BYTES//{'u8':1,'f16':2,'f32':4}[dtype] or
         any(not isinstance(d, int) or d < 1 for d in target) or
         any(a not in (1, b) for a, b in zip((1,) * (len(target) - len(x.shape)) + x.shape, target))):
-        raise ValueError("Broadcast requires compatible rank 1-4 shapes with 1-1048576 output elements")
+        raise ValueError("Broadcast requires compatible rank 1-4 shapes with bounded output elements")
     if dtype == "f32":
         # FP32 Broadcast introduces compute tasks on this compiler. Replicate
         # pairs of 16-bit storage words instead, without any float conversion.
@@ -1053,14 +1221,14 @@ def compile_permute(shape, order, *, dtype, libraries=None, native_dir=None, tim
     """Reorder complete dense allocations with DMA, including exact FP32 bits."""
     import numpy as np
     from . import Graph, input, op, constant
-    if dtype not in ("f16", "f32"):
-        raise ValueError("Permutation dtype must be f16/f32")
+    if dtype not in ("f16", "f32", "u8"):
+        raise ValueError("Permutation dtype must be f16/f32/u8")
     x = input("x", shape=shape, dtype=dtype)
     order = tuple(order)
-    if (not 1 <= len(x.shape) <= 4 or prod(x.shape) > MAX_TENSOR_ELEMENTS or
+    if (not 1 <= len(x.shape) <= 4 or prod(x.shape) > MAX_ALLOCATION_BYTES//{"u8":1,"f16":2,"f32":4}[dtype] or
         any(type(a) is not int for a in order) or sorted(order) != list(range(len(x.shape)))):
-        raise ValueError("Permutation requires rank 1-4, 1-1048576 elements, and every axis exactly once")
-    x = input("x", shape=(*x.shape, 2 if dtype == "f16" else 4), dtype="u8")
+        raise ValueError("Permutation requires rank 1-4, bounded elements, and every axis exactly once")
+    x = input("x", shape=(*x.shape, {"u8": 1, "f16": 2, "f32": 4}[dtype]), dtype="u8")
     order = (*order, len(order))  # Keep the bytes of each floating point value together.
     target = tuple(x.shape[a] for a in order)
     y = op("Transpose", x, constant(np.array(order, dtype=np.int64)),
@@ -1073,11 +1241,11 @@ def compile_slice(elements, start, count, *, dtype, libraries=None, native_dir=N
     """Extract a contiguous compute tile with exact byte DMA, without host copies."""
     import numpy as np
     from . import Graph, input, op, constant
-    if (dtype not in ("f16", "f32") or any(type(v) is not int for v in (elements, start, count)) or
-        not 1 <= elements <= MAX_TENSOR_ELEMENTS or not 1 <= count <= MAX_ELEMENTS or
+    if (dtype not in ("f16", "f32", "u8") or any(type(v) is not int for v in (elements, start, count)) or
+        not 1 <= elements <= MAX_ALLOCATION_BYTES//{'u8':1,'f16':2,'f32':4}[dtype] or not 1 <= count <= MAX_ELEMENTS or
         not 0 <= start <= elements-count):
         raise ValueError("Slice requires bounded storage and an in-range 1-65536-element tile")
-    width = 2 if dtype == "f16" else 4
+    width = {"u8": 1, "f16": 2, "f32": 4}[dtype]
     x = input("x", shape=(elements, width), dtype="u8")
     begin, end, strides = [constant(np.array(v, dtype=np.int64))
                            for v in ([start, 0], [start+count, width], [1, 1])]
@@ -1093,11 +1261,11 @@ def compile_gather(elements, indices, *, dtype, libraries=None, native_dir=None,
     import numpy as np
     from . import Graph, input, op, constant
     indices = np.asarray(indices)
-    if (dtype not in ("f16", "f32") or type(elements) is not int or not 1 <= elements <= MAX_ELEMENTS or
+    if (dtype not in ("f16", "f32", "u8") or type(elements) is not int or not 1 <= elements <= MAX_ELEMENTS or
         indices.dtype.kind not in "iu" or not 1 <= indices.ndim <= 3 or not 0 < indices.size <= MAX_ELEMENTS or
         np.any(indices < -1) or np.any(indices >= elements)):
         raise ValueError("Gather requires bounded FP16/FP32 storage and indices in [-1,elements)")
-    width = 2 if dtype == "f16" else 4
+    width = {"u8": 1, "f16": 2, "f32": 4}[dtype]
     x = input("x", shape=(elements, width), dtype="u8")
     padded = op("Concat", x, constant(np.zeros((1, width), dtype=np.uint8)), axis=0,
                 _shape=(elements+1, width), _dtype="u8")
@@ -1111,10 +1279,10 @@ def compile_matrix_concat(rows, columns, *, dtype, libraries=None, native_dir=No
     """Assemble matrix row tiles with byte DMA; no numeric conversion."""
     from . import Graph, input, op
     rows = tuple(rows)
-    if (dtype not in ("f16", "f32") or type(columns) is not int or columns < 1 or not 2 <= len(rows) <= 63 or
-        any(type(r) is not int or r < 1 for r in rows) or sum(rows)*columns > MAX_TENSOR_ELEMENTS):
-        raise ValueError("Matrix concat requires 2-63 positive row tiles and 1-1048576 output elements")
-    width = 2 if dtype == "f16" else 4
+    if (dtype not in ("f16", "f32", "u8") or type(columns) is not int or columns < 1 or not 2 <= len(rows) <= 63 or
+        any(type(r) is not int or r < 1 for r in rows) or sum(rows)*columns > MAX_ALLOCATION_BYTES//{'u8':1,'f16':2,'f32':4}[dtype]):
+        raise ValueError("Matrix concat requires 2-63 positive row tiles and bounded output elements")
+    width = {"u8": 1, "f16": 2, "f32": 4}[dtype]
     inputs = [input(f"x{i}", shape=(r, columns, width), dtype="u8") for i, r in enumerate(rows)]
     y = op("Concat", *inputs, axis=0, _shape=(sum(rows), columns, width), _dtype="u8", _name="y")
     return compile_precision_graph(Graph(inputs, [y]), libraries=libraries, native_dir=native_dir,
@@ -1127,7 +1295,7 @@ def compile_concat_many(groups, *, dtype, libraries=None, native_dir=None, timeo
     groups=tuple(tuple(group) for group in groups)
     if (dtype not in ('f16','f32') or not 2<=len(groups) or sum(map(len,groups))+len(groups)>64
         or any(not 2<=len(group)<=63 or any(type(size) is not int or size<1 for size in group)
-               or sum(group)>MAX_TENSOR_ELEMENTS for group in groups)):
+               or sum(group)>MAX_ALLOCATION_BYTES//(2 if dtype=='f16' else 4) for group in groups)):
         raise ValueError('Multi-concat requires >=2 outputs, 2-63 tiles each, <=64 total bindings and bounded outputs')
     width=2 if dtype=='f16' else 4;inputs=[];outputs=[]
     for i,group in enumerate(groups):

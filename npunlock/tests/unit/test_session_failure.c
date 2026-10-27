@@ -205,6 +205,53 @@ static void check_reuse(void) {
   npunlock_diagnostic_release(&diagnostic);
 }
 
+static void check_ranges(void) {
+  graphinfer_session *session = mock_session();
+  graphinfer_session_result root = {0};
+  graphinfer_shared_buffer buffer = {0};
+  graphinfer_shared_tensor input = {0}, output = {0};
+  graphinfer_tensor_range in = {0, sizeof(float)}, out = {4096, sizeof(float)};
+  graphinfer_session_infer_result result = {0};
+  session->argument_count = 2; session->input_count = session->output_count = 1;
+  session->arguments = calloc(2, sizeof(*session->arguments));
+  assert(session->arguments);
+  for (unsigned i = 0; i < 2; ++i) {
+    session->arguments[i].index = i;
+    session->arguments[i].data_size = sizeof(float);
+    session->arguments[i].type = i ? NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_OUTPUT : NPUNLOCK_ZE_GRAPH_ARGUMENT_TYPE_INPUT;
+  }
+  assert(graphinfer_shared_buffer_create(session, 12288, &buffer) == NPUNLOCK_STATUS_OK);
+  input.struct_size = output.struct_size = sizeof(input);
+  input.argument_index = 0; output.argument_index = 1;
+  input.buffer = output.buffer = &buffer;
+  *(float *)buffer.data = 7;
+  assert(graphinfer_session_infer(session, &input, 1, &output, 1, &result) == NPUNLOCK_STATUS_INVALID_ARGUMENT);
+  graphinfer_session_infer_result_release(&result);
+  assert(graphinfer_session_infer_ranges(session, &input, &in, 1, &output, &out, 1, &result) == NPUNLOCK_STATUS_OK);
+  assert(*(float *)(buffer.data + 4096) == 8 && append_calls == 1);
+  graphinfer_session_infer_result_release(&result);
+  for (unsigned i = 0; i < 5; ++i) {
+    in = (graphinfer_tensor_range){0, sizeof(float)};
+    if (i == 0) in.offset = 1;
+    if (i == 1) in.offset = SIZE_MAX;
+    if (i == 2) in.size = 8;
+    if (i == 3) in.offset = 4096; /* Exact output alias. */
+    if (i == 4) in.offset = 12288; /* End address without space. */
+    assert(graphinfer_session_infer_ranges(session, &input, &in, 1, &output, &out, 1, &result) == NPUNLOCK_STATUS_INVALID_ARGUMENT);
+    assert(append_calls == 1 && !session->failed);
+    graphinfer_session_infer_result_release(&result);
+  }
+  /* Partially overlapping ranges must fail even though the base pointers differ. */
+  session->arguments[0].data_size = session->arguments[1].data_size = 8192;
+  in = (graphinfer_tensor_range){0, 8192}; out = (graphinfer_tensor_range){4096, 8192};
+  assert(graphinfer_session_infer_ranges(session, &input, &in, 1, &output, &out, 1, &result) == NPUNLOCK_STATUS_INVALID_ARGUMENT);
+  assert(append_calls == 1);
+  graphinfer_session_infer_result_release(&result);
+  root.session = session;
+  graphinfer_session_result_release(&root);
+  graphinfer_shared_buffer_release(&buffer);
+}
+
 static void check_safe_failure(unsigned stage) {
   graphinfer_session *session = mock_session();
   graphinfer_session_result result = {0};
@@ -246,6 +293,7 @@ int main(void) {
   check_quarantine(0, 0x70000001); /* ZE_RESULT_ERROR_DEVICE_LOST. */
   check_quarantine(0x70000001, 0); /* Queue submission failure. */
   check_reuse();
+  check_ranges();
   for (unsigned stage = 0; stage < 3; ++stage) check_safe_failure(stage);
   puts("session reuse, rebinding, safe failures and failure quarantine: passed");
   return 0;

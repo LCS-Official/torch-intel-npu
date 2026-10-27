@@ -203,24 +203,28 @@ class FrozenTransformer(torch.nn.Module):
                 info=ET.SubElement(layer,'rt_info');ET.SubElement(info,'attribute',name='decompression',version='0')
         return graph,ET.tostring(xml),ir.weights
 
+    def _compile_graph(self,shape,segment,block_index,prepared=None):
+        import torch_intel_npu as npu
+        graph,xml,data=self.graph(shape,segment=segment,block_index=block_index) if prepared is None else prepared
+        result=npu._native.compile_ir(xml,data,build_flags='--config EXECUTION_MODE_HINT="ACCURACY"',timeout_ms=20000)
+        if (result.vendor_id,result.device_id,tuple(result.compiler_version))!=(0x8086,0x643e,(8,3)):raise ValueError('Unsupported Transformer profile')
+        program=s.load_native(result.graph_blob,graph=graph,libraries=npu._native)
+        self._evidence[(shape,segment,block_index)]=self._inspect_blob(program.graph_blob)
+        return program
+
     def _run_graph(self,x,normalized=None,*,segment=None,block_index=0):
         import torch_intel_npu as npu
         with npu._lock:
             shape=self._shape(tuple(x.shape))
-            cache=(shape,segment,block_index)
+            cache=(shape,segment,block_index);prepared=None
             if cache not in self._keys:
-                graph,xml,data=self.graph(shape,segment=segment,block_index=block_index);key=('frozen_transformer',hashlib.sha256(xml+data).digest())
-                if key not in npu._sessions:
-                    if len(npu._sessions)>=npu._MAX_SESSIONS:raise RuntimeError('NPU graph cache is full; start a new process')
-                    result=npu._native.compile_ir(xml,data,build_flags='--config EXECUTION_MODE_HINT="ACCURACY"',timeout_ms=20000)
-                    if (result.vendor_id,result.device_id,tuple(result.compiler_version))!=(0x8086,0x643e,(8,3)):raise ValueError('Unsupported Transformer profile')
-                    program=s.load_native(result.graph_blob,graph=graph,libraries=npu._native)
-                    evidence=self._inspect_blob(program.graph_blob)
-                    session=npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                    npu._sessions[key]=session,program;npu._session_creations+=1
-                else:evidence=self._inspect_blob(npu._sessions[key][1].graph_blob)
-                self._evidence[cache]=evidence
-                self._keys[cache]=key
+                prepared=self.graph(shape,segment=segment,block_index=block_index)
+                self._keys[cache]=('frozen_transformer',hashlib.sha256(prepared[1]+prepared[2]).digest())
+            key=self._keys[cache]
+            factory=lambda:self._compile_graph(shape,segment,block_index,prepared)
+            npu._register_graph_factory(key,factory)
+            if cache not in self._evidence and key in npu._sessions:
+                self._evidence[cache]=self._inspect_blob(npu._sessions[key][1].graph_blob)
             return npu._run(self._keys[cache],[x] if normalized is None else [x,normalized],shape,torch.float16)
 
     def _inspect_blob(self,blob):

@@ -1,0 +1,15 @@
+{
+  "checked_on": "2026-10-18",
+  "torch_version": "2.14.1+cpu",
+  "installed_header": "torch/include/ATen/native/cpu/moments_utils.h",
+  "installed_header_sha256": "fc7598344925a3cfb1e42afe81fc350cbbfe2f2973ba053c0765f601ff46efba",
+  "upstream_navigation": "https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/cpu/moments_utils.h",
+  "note": "The moving main URL is navigation only. The pinned local Torch version and header hash identify the checked implementation; no historical Git commit is inferred.",
+  "adapted_files": [
+    "npunlock/tests/fixtures/npu4000/resident_layernorm.c",
+    "npunlock-probe/research/layernorm_mixed_moments.py"
+  ],
+  "adaptation": "Eight-lane cascaded Welford ordering, scalar SHAVE evaluation and independent CPU research emulator. No AVX implementation transplanted. Integer fused operation is original project code.",
+  "license_file": "LICENSES/PyTorch.txt",
+  "license_sha256": "0fc92425d130d9c87a5eb7427082e3afdbff6ef169bc678e15abba4c2d37c934"
+}

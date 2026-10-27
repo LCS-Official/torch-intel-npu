@@ -1,34 +1,35 @@
-# v0.1.0 Experimental Preview
+# v0.2.0 Experimental Preview
 
-首个研究预览版：在 Lunar Lake NPU4000 上，通过 npunlock、Level Zero 和自定义 SHAVE 内核
-实现 PyTorch `intel_npu` 设备入口，并提供冻结 DPU 模型适配器。发布状态以 GitHub 实际 tag/release 为准。
+This release brings the accumulated Intel NPU4000 backend work since v0.1.0 into one source release. It remains an experimental Windows/Lunar Lake backend, with explicit compatibility and numerical limits.
 
-## 包含内容
+## Changes
 
-- FP16/真正 FP32 Tensor、已列明的算术/归约/二维矩乘、Linear/Conv2d/BatchNorm/池化、一阶梯度与基本 SGD。
-- 自定义 SHAVE 源码、汇编、源码配套 ELF 与 manifest；宿主组件源码构建脚本和 requirements。
-- 独立的冻结 FP16/INT8/INT4/NF4 Linear 及 SmolLM2-135M-Instruct 适配路径，包含会话/缓冲区复用与可选缓存。
-- 安装、兼容性、性能口径、许可证、来源/reference、贡献说明与离线 CI。
+- Broader PyTorch device compatibility: integer/Boolean arithmetic, indexing, reductions, sorting, losses, random sampling, standard modules and optimizers within the documented contracts.
+- Rank 0–64 storage and allocations up to 1 GiB, with dtype-aware limits and bounded operator workspaces. These are storage capabilities, not certification of arbitrary 14 GiB model training.
+- Standard `torch.amp.GradScaler("intel_npu")` integration for tested FP32-master-parameter training configurations.
+- Additional attention and model migration support, including bounded GQA/empty-dimension behavior, experimental blockwise attention and strided NestedTensor inference. Default attention remains the existing math path.
+- Complete 30-layer SmolLM2-135M frozen decoder inference on NPU, KV caching and startup/runtime improvements, plus optional calibrated W8/mixed-projection/low-rank experiments. Embeddings, final norm/head and sampling remain explicit CPU stages.
+- Residual-factor prefill cache identity now includes factor values and rank. Smol cache pressure retires the graph family together; unsafe grouped-plan retirement is rejected before execution. Default graph cache remains 1536 entries/512 MiB, with explicit byte-budget control.
+- Expanded source tests, automatic offline test discovery, release manifests and provenance. English is now the default README, with a Chinese overview and language-switching links. The previous English URL remains as a redirect page.
 
-## 已验证范围
+## Validation and upgrade
 
-Windows x64、Core Ultra 7 258V、NPU `8086:643e`、驱动 `32.0.100.5540`、图编译器 `8.3`、
-Python 3.12、Torch 2.14.1+cpu。新 Conda 环境的宿主源码构建与真实设备冒烟已通过。
-最新发布回归见 [RELEASE_READINESS.md](RELEASE_READINESS.md)，逐项契约见 [COMPATIBILITY.md](COMPATIBILITY.md)。
-45 项离线检查已在本地 Git 克隆通过；GitHub 托管 CI 因账号侧 Actions 限制未能启动，
-不能将本次发布视作云端 CI 已通过。解除限制后可手动运行离线工作流，包含发布 manifest 校验。
+The supported reference platform is Windows x64, Core Ultra 7 258V, NPU4000 `8086:643e`, driver 32.0.100.5540, compiler 8.3, Python 3.12 and Torch 2.14.1+cpu. See [release validation](RELEASE_READINESS.md) for exact source-build, offline and real-NPU results, including skipped tests and CI status.
 
-## 使用前须知
+**Upgrading from v0.1.0 requires rebuilding host components with `build_npu.ps1`.** Do not mix the new Python source with old DLL/PYD files. SHAVE source/ELF/assembly provenance is included; model weights, environments, tools, host binaries and driver-generated graph blobs are excluded. There is no wheel release. See [INSTALL.md](INSTALL.md).
 
-普通 FP16 `torch.mm` 仍走 FP32 SHAVE 路径，通用 GEMM 较慢；冻结适配器的 DPU 性能不能套用到任意模型。
-FP16 SmallResNet 仅通过同权重逐步对照，15 步测试接近收敛时梯度相对 L2 误差最高约 22.65%；
-W8 完整模型质量未全部过关。未认证任意 Hugging Face 模型、
-AMP/广泛优化器、异步多流、GPU+NPU 协同、长上下文和其他设备/驱动组合。
-低位支持不表示原生 4-bit 算力或通用低位训练。
+## Known limitations
 
-运行无需 OpenVINO Python/runtime，仍需 Intel NPU 驱动及图编译器。源码包不包含模型、工具链、驱动、
-宿主二进制或图 blob。修改 SHAVE C 需额外 MoviTools；目前按源码安装，暂无 wheel。
+- This provides an `intel_npu` PyTorch device; it is not a CUDA runtime/PTX replacement and is not merged into `torch.xpu`.
+- Ordinary FP16 matmul still uses the generic SHAVE path; frozen DPU adapters are a separate execution route. Reported kernel/model timings are not chip peak throughput or general training speedups.
+- FP16/AMP training remains bounded by tested models/configurations. Higher-order gradients, arbitrary in-place/view semantics, broad optimizer modes, serialization/compile integration and long-term training are incomplete.
+- W8 correction retains 16 historical quality failures. New calibration candidates did not beat the existing internal selection. INT4/NF4 whole-model quality and generic low-bit training are not certified.
+- The Smol adapter retains a 64-position KV capacity. Blockwise attention/NestedTensor support is experimental and does not cover arbitrary masks, dropout, layouts or training configurations.
+- Graph-family retirement is a tested workaround with extra compilation cost. The underlying partial-teardown fault has not been conclusively attributed to the Windows driver or native session layer.
+- Effective asynchronous streams/events, multi-device/distributed execution and GPU+NPU collaboration are not implemented.
 
-从 [INSTALL.md](INSTALL.md) 开始。性能数字沿用已标明日期/条件的历史报告，非通用排名或芯片峰值。
-主要基础为 [npunlock](https://github.com/hsfzxjy/npunlock)；改编与参考来源见 [REFERENCES.md](REFERENCES.md)、
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 和 [LICENSE](LICENSE)。
+Full contracts and per-stage evidence are in [COMPATIBILITY.md](COMPATIBILITY.md) and the linked reports. Sources and adapted algorithms are attributed in [REFERENCES.md](REFERENCES.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), NOTICE and LICENSES.
+
+---
+
+本版集中发布v0.1.0以来的兼容性、容量、训练接口、Attention、模型与缓存改进，仍为实验预览版。从旧版升级需重新构建宿主组件。低位16处质量失败、原生生命周期根因、异步与GPU＋NPU协同等问题仍保留，不宣称通用CUDA兼容、完整低位整网或训练加速。详细验收、云端CI状态和限制见上述链接。

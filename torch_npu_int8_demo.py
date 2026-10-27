@@ -201,7 +201,7 @@ def execute(case):
                 x=torch.ones(1,16,dtype=torch.float16).to('intel_npu')
                 limit=npu._MAX_SESSIONS
                 try:
-                    npu._MAX_SESSIONS=len(npu._sessions)
+                    npu._MAX_SESSIONS=0
                     try:layer(x)
                     except RuntimeError as error:assert 'cache is full' in str(error)
                     else:raise AssertionError('Full cache did not reject')

@@ -18,8 +18,22 @@ import npunlock as s
 from safetensors import safe_open
 from npunlock.npu4000 import MAX_TENSOR_ELEMENTS, compile_rmsnorm, compile_fused_rmsnorm
 from torch_npu_lowbit import PackedWeight, quantize_weight, weight_graph
+from torch_npu_lowbit_correction import LowRankCorrection
 from torch_npu_transformer import FrozenTransformer, _half_bytes
 from torch_npu_graph_cache import compile_fused_cached, prefill_cache_graph
+
+
+_PROJECTIONS=frozenset(('self_attn.q_proj.weight','self_attn.k_proj.weight','self_attn.v_proj.weight',
+    'self_attn.o_proj.weight','mlp.gate_proj.weight','mlp.up_proj.weight','mlp.down_proj.weight'))
+
+
+def _projection_policy(mode,names):
+    if (type(names) is not tuple or any(type(name) is not str for name in names)
+        or len(set(names))!=len(names) or not set(names)<=_PROJECTIONS):
+        raise ValueError('fp16_projections requires a tuple of distinct SmolLM projection weight names')
+    if names and (mode!='w8a16' or len(names)==len(_PROJECTIONS)):
+        raise ValueError('FP16 protection requires w8a16 with at least one INT8 projection; use mode=fp16 for all FP16')
+    return frozenset(names)
 
 
 @lru_cache(maxsize=1)
@@ -52,12 +66,14 @@ class FrozenSmolLayer(torch.nn.Module):
     """Explicit single SmolLM2 decoder layer, bounded FP16 NPU input/output."""
     # Reuse the existing frozen-graph execution/cache and profile inspection.
     _run_graph=FrozenTransformer._run_graph
+    _compile_graph=FrozenTransformer._compile_graph
     _inspect_blob=FrozenTransformer._inspect_blob
     mode=FrozenTransformer.mode
 
-    def __init__(self,config,weights,*,mode='w8a16',packed_weights=None):
+    def __init__(self,config,weights,*,mode='w8a16',packed_weights=None,fp16_projections=(),corrections=None):
         super().__init__()
         if mode not in ('fp16','w8a16'):raise ValueError('Requires fp16 or w8a16')
+        self._fp16_projections=_projection_policy(mode,fp16_projections)
         required=dict(model_type='llama',hidden_size=576,intermediate_size=1536,num_attention_heads=9,
                       num_key_value_heads=3,hidden_act='silu',attention_bias=False,mlp_bias=False,
                       rms_norm_eps=1e-5,rope_theta=100000,rope_scaling=None,pretraining_tp=1)
@@ -69,6 +85,11 @@ class FrozenSmolLayer(torch.nn.Module):
                 'self_attn.v_proj.weight':(192,576),'self_attn.o_proj.weight':(576,576),
                 'mlp.gate_proj.weight':(1536,576),'mlp.up_proj.weight':(1536,576),'mlp.down_proj.weight':(576,1536),
                 'input_layernorm.weight':(576,),'post_attention_layernorm.weight':(576,)}
+        if corrections is not None and (type(corrections) is not dict or mode!='w8a16' or packed_weights is None
+            or not set(corrections)<=_PROJECTIONS or set(corrections)&self.fp16_projections
+            or any(not isinstance(c,LowRankCorrection) or c.shape!=shapes[name] or c.rank>32 for name,c in corrections.items())):
+            raise ValueError('Corrections require matching rank<=32 factors, explicit packed W8 weights, and unprotected projections')
+        self._corrections={} if corrections is None else dict(corrections)
         if set(weights)!=set(shapes):raise ValueError('Unexpected layer weight names')
         if packed_weights is not None:
             if mode!='w8a16' or type(packed_weights) is not dict or set(packed_weights)!={name for name,shape in shapes.items() if len(shape)==2}:
@@ -92,13 +113,17 @@ class FrozenSmolLayer(torch.nn.Module):
         self.eval()
 
     @classmethod
-    def from_checkpoint(cls,directory,*,layer_index=0,mode='w8a16',packed_weights=None):
+    def from_checkpoint(cls,directory,*,layer_index=0,mode='w8a16',packed_weights=None,fp16_projections=(),corrections=None):
+        _projection_policy(mode,fp16_projections)
         directory=Path(directory);config=json.loads((directory/'config.json').read_text())
         if type(layer_index) is not int or not 0<=layer_index<config.get('num_hidden_layers',0):raise ValueError('Invalid layer index')
         prefix=f'model.layers.{layer_index}.'
         with safe_open(directory/'model.safetensors',framework='pt',device='cpu') as file:
             weights={name[len(prefix):]:file.get_tensor(name) for name in file.keys() if name.startswith(prefix)}
-        return cls(config,weights,mode=mode,packed_weights=packed_weights)
+        return cls(config,weights,mode=mode,packed_weights=packed_weights,fp16_projections=fp16_projections,corrections=corrections)
+
+    @property
+    def fp16_projections(self):return self._fp16_projections
 
     def _shape(self,shape):
         if (len(shape)!=3 or any(type(v) is not int or v<=0 for v in shape) or shape[2]!=576
@@ -119,11 +144,16 @@ class FrozenSmolLayer(torch.nn.Module):
             or normalized.device.type!='cpu' or normalized.dtype!=torch.float16 or normalized.shape!=x.shape)):
             raise ValueError('CPU segment requires matching FP16 normalization')
         def linear(v,name):
-            if quantized and self.mode=='w8a16':
+            if quantized and self.mode=='w8a16' and name not in self.fp16_projections:
                 q=self._packed[name];codes=np.frombuffer(q.data,dtype=np.int8).reshape(q.shape)
                 scales=np.frombuffer(q.scales,dtype=np.float16).astype(np.float64)
                 weight=torch.from_numpy(codes.astype(np.float64)*scales[:,None])
-                return (v.double()@weight.t()).half()
+                value=(v.double()@weight.t()).half()
+                if name in self._corrections:
+                    a,b=self._corrections[name].tensors()
+                    delta=F.linear(F.linear(v.float(),a.float()).half().float(),b.float()).half()
+                    value=(value+delta).half()
+                return value
             return F.linear(v.float(),self._cpu_weight(name).float()).half()
         def norm(v,name):
             value=v.float();normalized=(value*torch.rsqrt(value.square().mean(-1,keepdim=True)+1e-5)).half()
@@ -198,7 +228,9 @@ class FrozenSmolLayer(torch.nn.Module):
             return op('Multiply',op('Multiply',v,inverse,shape=shape,auto_broadcast='numpy'),s.constant(self._cpu_weight(name).numpy()),auto_broadcast='numpy')
         def linear(v,name):
             v=reshape(v,(rows,v.shape[-1]));data,wshape=self._weights[name]
-            if self.mode=='fp16':value=op('MatMul',v,s.constant(np.frombuffer(data,dtype=np.float16).reshape(wshape)),shape=(rows,wshape[0]),transpose_a=False,transpose_b=True)
+            if self.mode=='fp16' or name in self.fp16_projections:
+                attrs={'name':name.replace('.','_')+'_protected_fp16'} if name in self.fp16_projections else {}
+                value=op('MatMul',v,s.constant(np.frombuffer(data,dtype=np.float16).reshape(wshape),**attrs),shape=(rows,wshape[0]),transpose_a=False,transpose_b=True)
             else:
                 graph,xml,_=weight_graph(self._packed[name],rows);mapped={graph.inputs[0]:v};prefix=name.replace('.','_')+'_'
                 for node in graph.nodes:
@@ -207,6 +239,11 @@ class FrozenSmolLayer(torch.nn.Module):
                     mapped.update(zip(node.outputs,cloned.outputs))
                 decodes.extend(prefix+l.attrib['name'] for l in ET.fromstring(xml).findall('./layers/layer') if l.find("./rt_info/attribute[@name='decompression']") is not None)
                 value=mapped[graph.outputs[0]]
+                if name in self._corrections:
+                    down_weight,up_weight=self._corrections[name].tensors()
+                    reduced=op('MatMul',v,s.constant(down_weight.numpy(),name=prefix+'correction_down'),shape=(rows,down_weight.shape[0]),transpose_a=False,transpose_b=True)
+                    delta=op('MatMul',reduced,s.constant(up_weight.numpy(),name=prefix+'correction_up'),shape=(rows,wshape[0]),transpose_a=False,transpose_b=True)
+                    value=op('Add',value,delta,shape=(rows,wshape[0]),auto_broadcast='numpy')
             return reshape(value,(1,batch,wshape[0]) if folded else (b,length,wshape[0]))
         def heads(v,count):
             return reshape(v,(1,batch*count,1,64)) if folded else op('Transpose',reshape(v,(b,length,count,64)),s.constant(np.array([0,2,1,3],dtype=np.int64)),shape=(b,count,length,64))
@@ -320,11 +357,8 @@ class FrozenSmolLayer(torch.nn.Module):
             limit=512 if parallel else 256
             for start in range(0,rows,limit):
                 count=min(limit,rows-start);key=('smollm_rmsnorm',count,hashlib.sha256(kernel).digest(),parallel)
-                if key not in npu._sessions:
-                    if len(npu._sessions)>=npu._MAX_SESSIONS:raise RuntimeError('NPU graph cache is full; start a new process')
-                    program=compile_rmsnorm(count,kernel,libraries=npu._native,parallel=parallel)
-                    session=npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                    npu._sessions[key]=session,program;npu._session_creations+=1
+                factory=lambda:compile_rmsnorm(count,kernel,libraries=npu._native,parallel=parallel)
+                npu._register_graph_factory(key,factory)
                 gamma=self._norm_parameter(name,count)
                 chunk=value.view(rows,576) if rows<=limit else npu._slice(value,start*576,count*576).view(count,576)
                 out=None
@@ -344,11 +378,30 @@ class FrozenSmolLayer(torch.nn.Module):
         # contracts are checked before launching every new fused shape.
         return self._fuse_norm and (x.shape[1]==1 or self._fuse_prefill) and 1<=x.shape[0]<=8
 
+    def _compile_fused(self,shape,segment,kind,prepared=None):
+        import torch_intel_npu as npu
+        local=(shape,'fused_rmsnorm',segment,kind);key=self._keys[local]
+        kernel=_rmsnorm_kernel();selection=_kv_select_kernel() if kind=='decode' else b''
+        if prepared is None:
+            metadata=prefill_cache_graph(self,shape,kernel,compile_fused_rmsnorm) if key[0]=='smollm_prefill_recipe' else None
+            if metadata is None:
+                graph,xml,data=self.graph(shape,segment=segment,kv_cache=kind,fused_norm=True);graph_factory=None
+            else:
+                graph=metadata[0];xml=data=None
+                graph_factory=lambda:self.graph(shape,segment=segment,kv_cache=kind,fused_norm=True)
+        else:graph,xml,data,graph_factory=prepared
+        program=compile_fused_cached(npu,graph,xml,data,kernel,graph_digest=key[1],whole_layer=segment=='layer',
+            select_kernel_elf=selection or None,compiler_factory=compile_fused_rmsnorm,graph_factory=graph_factory)
+        evidence=self._inspect_blob(program.graph_blob);evidence['rmsnorm']=json.loads(program.patch_reports[0])
+        if selection:evidence['kv_select']=json.loads(program.patch_reports[1])
+        self._evidence[local]=evidence
+        return program
+
     def _run_fused(self,x,*,segment,cache=None,kv=False,plan=None):
         import torch_intel_npu as npu
         shape=tuple(x.shape);rows=shape[0]*shape[1]
         kind=('prefill' if cache is None else 'decode') if kv else None
-        local=(shape,'fused_rmsnorm',segment,kind)
+        local=(shape,'fused_rmsnorm',segment,kind);compiled_input=None
         if local not in self._keys:
             kernel=_rmsnorm_kernel();selection=_kv_select_kernel() if kind=='decode' else b''
             prepared=prefill_cache_graph(self,shape,kernel,compile_fused_rmsnorm) if segment=='layer' and kind=='prefill' else None
@@ -358,17 +411,15 @@ class FrozenSmolLayer(torch.nn.Module):
             else:
                 graph,digest=prepared;xml=data=None;key=('smollm_prefill_recipe',digest)
                 factory=lambda:self.graph(shape,segment=segment,kv_cache=kind,fused_norm=True)
-            if key not in npu._sessions:
-                if len(npu._sessions)>=npu._MAX_SESSIONS:raise RuntimeError('NPU graph cache is full; start a new process')
-                program=compile_fused_cached(npu,graph,xml,data,kernel,graph_digest=key[1],whole_layer=segment=='layer',
-                    select_kernel_elf=selection or None,compiler_factory=compile_fused_rmsnorm,graph_factory=factory)
-                evidence=self._inspect_blob(program.graph_blob);evidence['rmsnorm']=json.loads(program.patch_reports[0])
-                session=npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                npu._sessions[key]=session,program;npu._session_creations+=1
-            else:
-                program=npu._sessions[key][1];evidence=self._inspect_blob(program.graph_blob);evidence['rmsnorm']=json.loads(program.patch_reports[0])
-            if selection:evidence['kv_select']=json.loads(program.patch_reports[1])
-            self._keys[local]=key;self._evidence[local]=evidence
+            self._keys[local]=key;compiled_input=(graph,xml,data,factory)
+        key=self._keys[local]
+        factory=lambda:self._compile_fused(shape,segment,kind,compiled_input)
+        npu._register_graph_factory(key,factory)
+        if local not in self._evidence and key in npu._sessions:
+            program=npu._sessions[key][1]
+            evidence=self._inspect_blob(program.graph_blob);evidence['rmsnorm']=json.loads(program.patch_reports[0])
+            if kind=='decode':evidence['kv_select']=json.loads(program.patch_reports[1])
+            self._evidence[local]=evidence
         name='input_layernorm.weight' if segment=='attention' else 'post_attention_layernorm.weight'
         names=['input_layernorm.weight','post_attention_layernorm.weight'] if segment=='layer' else [name]
         inputs=[x,*[self._norm_parameter(name,max(2,rows)) for name in names]]
@@ -414,23 +465,26 @@ class FrozenSmolLayer(torch.nn.Module):
             npu._validate(tensor)
             if tuple(tensor.shape)!=shape or tensor.dtype!=dtype:raise ValueError('KV cache has the wrong batch, layout or dtype')
 
+    def _compile_kv_graph(self,shape,kind,prepared=None):
+        import torch_intel_npu as npu
+        graph,xml,data=self.graph(shape,segment='attention',kv_cache=kind) if prepared is None else prepared
+        result=npu._native.compile_ir(xml,data,build_flags='--config EXECUTION_MODE_HINT="ACCURACY"',timeout_ms=20000)
+        if (result.vendor_id,result.device_id,tuple(result.compiler_version))!=(0x8086,0x643e,(8,3)):
+            raise ValueError('Unsupported SmolLM KV profile')
+        program=s.load_native(result.graph_blob,graph=graph,libraries=npu._native)
+        self._evidence[(shape,'kv_'+kind,0)]=self._inspect_blob(program.graph_blob)
+        return program
+
     def _run_cached_attention(self,x,normalized,cache=None):
         import torch_intel_npu as npu
-        shape=tuple(x.shape);kind='prefill' if cache is None else 'decode';local=(shape,'kv_'+kind,0)
+        shape=tuple(x.shape);kind='prefill' if cache is None else 'decode';local=(shape,'kv_'+kind,0);prepared=None
         if local not in self._keys:
-            graph,xml,data=self.graph(shape,segment='attention',kv_cache=kind)
-            key=('smollm_kv',hashlib.sha256(xml+data).digest())
-            if key not in npu._sessions:
-                if len(npu._sessions)>=npu._MAX_SESSIONS:raise RuntimeError('NPU graph cache is full; start a new process')
-                result=npu._native.compile_ir(xml,data,build_flags='--config EXECUTION_MODE_HINT="ACCURACY"',timeout_ms=20000)
-                if (result.vendor_id,result.device_id,tuple(result.compiler_version))!=(0x8086,0x643e,(8,3)):
-                    raise ValueError('Unsupported SmolLM KV profile')
-                program=s.load_native(result.graph_blob,graph=graph,libraries=npu._native)
-                evidence=self._inspect_blob(program.graph_blob)
-                session=npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                npu._sessions[key]=session,program;npu._session_creations+=1
-            else:evidence=self._inspect_blob(npu._sessions[key][1].graph_blob)
-            self._keys[local]=key;self._evidence[local]=evidence
+            prepared=self.graph(shape,segment='attention',kv_cache=kind)
+            self._keys[local]=('smollm_kv',hashlib.sha256(prepared[1]+prepared[2]).digest())
+        key=self._keys[local];factory=lambda:self._compile_kv_graph(shape,kind,prepared)
+        npu._register_graph_factory(key,factory)
+        if local not in self._evidence and key in npu._sessions:
+            self._evidence[local]=self._inspect_blob(npu._sessions[key][1].graph_blob)
         inputs=[x,normalized] if cache is None else [x,normalized,cache.keys,cache.values,cache._position]
         output_shape=shape
         specs=[(target,torch.float16) for target in [output_shape,(output_shape[0],3,64,64),(output_shape[0],3,64,64)]]
@@ -497,8 +551,9 @@ class FrozenSmolStack(torch.nn.Module):
     """
     mode=FrozenTransformer.mode
 
-    def __init__(self,directory,*,start_layer=0,num_layers=2,mode='w8a16',packed_weights=None):
+    def __init__(self,directory,*,start_layer=0,num_layers=2,mode='w8a16',packed_weights=None,fp16_projections=(),corrections=None):
         super().__init__()
+        self._fp16_projections=_projection_policy(mode,fp16_projections)
         directory=Path(directory);config=json.loads((directory/'config.json').read_text())
         total=config.get('num_hidden_layers',0)
         if (type(start_layer) is not int or type(num_layers) is not int or type(total) is not int
@@ -509,13 +564,18 @@ class FrozenSmolStack(torch.nn.Module):
             or any(type(i) is not int for i in packed_weights) or any(type(value) is not dict for value in packed_weights.values())
             or set(packed_weights)!=set(range(start_layer,start_layer+num_layers))):
             raise ValueError('Prepared stack weights require a complete W8 map indexed by checkpoint layer')
+        if corrections is not None and (mode!='w8a16' or packed_weights is None or type(corrections) is not dict
+            or any(type(i) is not int or type(v) is not dict for i,v in corrections.items())
+            or set(corrections)!=set(range(start_layer,start_layer+num_layers))):
+            raise ValueError('Stack corrections require explicit W8 weights and a complete map indexed by checkpoint layer')
         layers=[]
         with safe_open(directory/'model.safetensors',framework='pt',device='cpu') as file:
             names=list(file.keys())
             for index in range(start_layer,start_layer+num_layers):
                 prefix=f'model.layers.{index}.'
                 weights={name[len(prefix):]:file.get_tensor(name) for name in names if name.startswith(prefix)}
-                layers.append(FrozenSmolLayer(config,weights,mode=mode,packed_weights=None if packed_weights is None else packed_weights[index]))
+                layers.append(FrozenSmolLayer(config,weights,mode=mode,packed_weights=None if packed_weights is None else packed_weights[index],
+                    fp16_projections=fp16_projections,corrections=None if corrections is None else corrections[index]))
         self.layers=torch.nn.ModuleList(layers);self.start_layer=start_layer;self._mode=mode
         self.eval()
 
@@ -524,6 +584,9 @@ class FrozenSmolStack(torch.nn.Module):
 
     @property
     def num_layers(self):return len(self.layers)
+
+    @property
+    def fp16_projections(self):return self._fp16_projections
 
     def reference_cpu(self,x,*,quantized=True):
         """Explicit staged CPU reference; never called by forward."""
@@ -571,11 +634,12 @@ class FrozenSmolStack(torch.nn.Module):
                 raise ValueError('Grouped decode requires whole-layer fused RMSNorm on every layer')
             updated=[];sequence=object()
             if group_size>1:
-                plan=[];x=npu._materialize(x)
-                for layer,cache in zip(self.layers,caches):
-                    x,cache=layer._decode_whole(x,cache,plan);updated.append(replace(cache,_sequence=sequence))
-                npu._run_chain(plan,group_size)
-                return x,tuple(updated)
+                with npu._smol_graph_plan():
+                    plan=[];x=npu._materialize(x)
+                    for layer,cache in zip(self.layers,caches):
+                        x,cache=layer._decode_whole(x,cache,plan);updated.append(replace(cache,_sequence=sequence))
+                    npu._run_chain(plan,group_size)
+                    return x,tuple(updated)
             for layer,cache in zip(self.layers,caches):
                 x,cache=layer.decode(x,cache);updated.append(replace(cache,_sequence=sequence))
             return x,tuple(updated)
@@ -584,3 +648,4 @@ class FrozenSmolStack(torch.nn.Module):
 # Cache shortcuts apply only to these unchanged graph-building entry points.
 _PREFILL_GRAPH=FrozenSmolLayer.graph
 _PREFILL_SERIALIZER=s.serialize_ir
+_PREFILL_WEIGHT_GRAPH=weight_graph

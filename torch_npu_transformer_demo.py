@@ -1,267 +1,313 @@
-"""Isolated causal Transformer calibration/numerical/performance checks."""
+"""Bounded standard TransformerEncoder and token-classifier migration checks."""
 import argparse
 import copy
 import gc
 import hashlib
+import io
 import json
 from pathlib import Path
-import statistics
 import subprocess
 import sys
-import time
 import traceback
+from torch_npu_standard_modules_demo import cpu_rng_reference
 
 ROOT=Path(__file__).resolve().parent
-OUT=ROOT/'npunlock-probe/research/results/transformer'
+OUT=ROOT/'npunlock-probe/research/results/transformer-container'
+PRECISIONS={'primitives':('float16','float32','int64','bool'),'boolean':('bool',),'masked':('float16',),
+            'container':('float16','float32'),'classifier':('float32',),'contracts':('float32',)}
+CASES=tuple(PRECISIONS)
 
 
-def execute(case):
-    import numpy as np
+def token_classifier(dtype=None, *, vocabulary=16, width=4, heads=2, length=3,
+                     layers=2, feedforward=8, dropout=.25):
+    import torch
+    class Classifier(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.embedding=torch.nn.Embedding(vocabulary,width,padding_idx=0)
+            self.position=torch.nn.Parameter(torch.randn(1,length,width)/10)
+            layer=torch.nn.TransformerEncoderLayer(width,heads,dim_feedforward=feedforward,dropout=dropout,batch_first=True,activation='gelu')
+            # shortcut: dense storage only; add NestedTensor after backend storage support exists.
+            self.encoder=torch.nn.TransformerEncoder(layer,layers,norm=torch.nn.LayerNorm(width),enable_nested_tensor=False)
+            self.head=torch.nn.Linear(width,3)
+            self.register_buffer('causal',torch.ones(length,length,dtype=torch.bool).triu(1))
+        def forward(self,tokens):
+            padding=tokens==0
+            x=self.encoder(self.embedding(tokens)+self.position,mask=self.causal,src_key_padding_mask=padding)
+            pooled=x.masked_fill(padding.unsqueeze(-1),0).sum(1)/padding.logical_not().to(x.dtype).sum(1,keepdim=True)
+            return self.head(pooled)
+    model=Classifier()
+    return model.to(dtype=dtype) if dtype is not None else model
+
+
+def cpu_tree(value):
+    import torch
+    if isinstance(value,torch.Tensor):return value.detach().cpu().clone()
+    if isinstance(value,dict):return {k:cpu_tree(v) for k,v in value.items()}
+    if isinstance(value,list):return [cpu_tree(v) for v in value]
+    if isinstance(value,tuple):return tuple(cpu_tree(v) for v in value)
+    return value
+
+
+def probe():
     import torch
     import torch_intel_npu as npu
-    from torch_npu_transformer import FrozenTransformer
-    torch.manual_seed(1041)
-    report=dict(case=case,status='running',checks=[],timings=[],sources={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest()
-        for p in ['torch_npu_transformer.py','torch_npu_transformer_demo.py','torch_npu_lowbit.py','torch_intel_npu.py']})
-    def source(d=128,layers=1,affine=False):
-        block=torch.nn.TransformerEncoderLayer(d,d//32,dim_feedforward=4*d,dropout=0,activation='gelu',
-                                               batch_first=True,norm_first=True)
-        src=torch.nn.TransformerEncoder(block,layers,enable_nested_tensor=False).eval()
-        if affine:
-            with torch.no_grad():
-                for layer in src.layers:
-                    for norm in (layer.norm1,layer.norm2):
-                        norm.weight.uniform_(.8,1.2);norm.bias.uniform_(-.03,.03)
-        return src
-    def prepare(src,mode):
-        samples=[torch.randn(b,t,src.layers[0].self_attn.embed_dim)*scale for b,t,scale in [(1,16,.5),(2,32,1.),(1,64,2.)]]
-        return FrozenTransformer.from_float(src,mode=mode,calibration_samples=samples if mode=='mixed_int8' else ())
-    def compare(model,host,tag):
-        ref,trace=model.reference_cpu(host)
-        original,_=model.reference_cpu(host,quantized=False)
-        x=host.to('intel_npu');before=npu.stats();actual=model(x).cpu();after=npu.stats()
-        np.savez(OUT/f'{tag}.npz',host=host.numpy(),actual=actual.numpy(),reference=ref.numpy(),original=original.numpy())
-        error=(actual.float()-ref.float()).abs();l2=float(torch.linalg.vector_norm(actual.float()-ref.float())/torch.linalg.vector_norm(ref.float()))
-        print(dict(tag=tag,max_abs=float(error.max()),relative_l2=l2),flush=True)
-        segments=[]
-        if model.mode=='mixed_int8':
-            value=x
-            for i,block in enumerate(model._blocks):
-                for j,segment in enumerate(('attention','ffn')):
-                    normalized=model._norm_device(value,block['norm'][j],i,j)
-                    host_value=value.cpu();host_norm=normalized.cpu()
-                    segment_ref,local=model.reference_cpu(host_value,segment=segment,block_index=i,normalized=host_norm)
-                    segment_out=model._run_graph(value,normalized,segment=segment,block_index=i)
-                    segment_actual=segment_out.cpu()
-                    torch.testing.assert_close(segment_actual,segment_ref,rtol=4e-3,atol=2e-3)
-                    segment_l2=float(torch.linalg.vector_norm(segment_actual.float()-segment_ref.float())/torch.linalg.vector_norm(segment_ref.float()))
-                    assert segment_l2<1e-3
-                    gamma,beta,eps=block['norm'][j]
-                    cpu_norm=torch.nn.functional.layer_norm(host_value.float(),(model._d,),
-                        torch.from_numpy(np.frombuffer(gamma,dtype=np.float16).copy()).float(),
-                        torch.from_numpy(np.frombuffer(beta,dtype=np.float16).copy()).float(),eps).half()
-                    step=model.activation_scales[i][0 if j==0 else 2]
-                    changes=int((torch.round(host_norm.float()/step)!=torch.round(cpu_norm.float()/step)).sum())
-                    trajectory_norm=trace[f'b{i}_{"qkv" if j==0 else "ff1"}_input'].reshape_as(host_norm)
-                    trajectory_changes=int((torch.round(host_norm.float()/step)!=torch.round(trajectory_norm.float()/step)).sum())
-                    segments.append(dict(block=i,segment=segment,relative_l2=segment_l2,norm_code_changes=changes,
-                                         trajectory_code_changes=trajectory_changes))
-                    value=segment_out
-            print(dict(tag=tag,fixed_input_segments=segments),flush=True)
-        # Whole mixed trajectories can diverge by a quantization bin after a
-        # rounded residual. Check L2 here and fixed-input segments separately.
-        if model.mode!='mixed_int8':torch.testing.assert_close(actual,ref,rtol=4e-3,atol=2e-3*len(model._blocks))
-        # Each fixed-input segment remains below 0.1%. Across up to two
-        # quantized blocks, bin-boundary changes need a separate 0.5% gate.
-        assert l2<(5e-3 if model.mode=='mixed_int8' else 2e-3),('execution relative L2',l2)
-        quality=float(torch.linalg.vector_norm(actual.float()-original.float())/torch.linalg.vector_norm(original.float()))
-        assert quality<.02,('quality relative L2',quality)
-        clipping={}
-        if model.activation_scales is not None:
-            for i,scales in enumerate(model.activation_scales):
-                for name,step in [('qkv',scales[0]),('ff1',scales[2])]:
-                    activation=trace[f'b{i}_{name}_input']
-                    clipping[f'b{i}_{name}']=int(((activation < -128*step)|(activation > 127*step)).sum())
-            assert not any(clipping.values()),('held-out activation clipping',clipping)
-        before=npu.stats();out=model(x);end=npu.stats()
-        for field in ('host_upload_copies','host_download_copies','session_creations'):assert before[field]==end[field],field
-        calls=end['npu_calls']-before['npu_calls']
-        assert calls>1 if model.mode=='mixed_int8' else calls==1
-        entry=dict(tag=tag,mode=model.mode,shape=list(host.shape),status='passed',max_abs_error=float(error.max()),
-            execution_relative_l2=l2,quality_relative_l2_original=quality,
-            warm_graph_calls=calls,warm_host_copies_and_compiles=0,scales=model.activation_scales,activation_clipped_elements=clipping,
-            fixed_input_segments=segments,evidence=list(model._evidence.values()))
-        report['checks'].append(entry);print({k:v for k,v in entry.items() if k!='evidence'},flush=True)
-        return actual
-    try:
+    torch.set_num_threads(1);torch.manual_seed(211)
+    rows=[]
+    def one(kind):
+        layer=torch.nn.TransformerEncoderLayer(4,2,dim_feedforward=8,dropout=0,batch_first=True)
+        cpu=torch.nn.TransformerEncoder(layer,2,enable_nested_tensor=kind!='dense-padding')
+        model=copy.deepcopy(cpu).to('intel_npu');train=kind.endswith('train')
+        cpu.train(train);model.train(train)
+        host=(torch.randn(2,3,4)/4).requires_grad_(train);x=host.detach().to('intel_npu').requires_grad_(train)
+        kwargs={}
+        if kind=='causal-train':kwargs['mask']=torch.ones(3,3,dtype=torch.bool).triu(1)
+        if kind.endswith('padding'):kwargs['src_key_padding_mask']=torch.tensor([[False,False,True],[False,True,True]])
+        options={k:v.to('intel_npu') for k,v in kwargs.items()};row=dict(name=kind)
+        try:
+            with torch.set_grad_enabled(train):
+                expected=cpu(host,**kwargs);actual=model(x,**options)
+                if train:actual.sum().backward();expected.sum().backward()
+            torch.testing.assert_close(actual.detach().cpu(),expected.detach(),rtol=3e-5,atol=3e-6,equal_nan=True)
+            row['status']='passed'
+        except Exception as error:row.update(status='blocked',error=str(error).splitlines()[0],traceback=traceback.format_exc())
+        return row
+    for kind in ('plain-train','causal-train','default-padding','dense-padding'):
+        row=one(kind);rows.append(row);gc.collect();print(row['name'],row['status'],row.get('error','')[:200],flush=True)
+    npu.shutdown()
+    return dict(status='probe-complete',checks=rows,final_stats=npu.stats())
+
+
+def execute(case,precision):
+    import torch
+    import torch_intel_npu as npu
+    torch.set_num_threads(1);torch.manual_seed(223)
+    dtype=getattr(torch,precision);checks=[];initial_fastpath=torch.backends.mha.get_fastpath_enabled()
+    def upload(x):return x.detach().to('intel_npu',memory_format=torch.contiguous_format).requires_grad_(x.requires_grad)
+    def close(a,b,exact=False):
+        torch.testing.assert_close(a.detach().cpu(),b.detach(),rtol=0 if exact else .003 if a.dtype==torch.float16 else 3e-5,
+                                   atol=0 if exact else .0005 if a.dtype==torch.float16 else 3e-6,equal_nan=True)
+    def bits(a,b):
+        assert torch.equal(a.detach().cpu().contiguous().view(torch.uint8),b.detach().contiguous().view(torch.uint8))
+    def transfers(before,flags,rng_headers=0):
+        after=npu.stats()
+        downloads=after['host_download_copies']-before['host_download_copies']
+        uploads=after['host_upload_copies']-before['host_upload_copies']
+        constants=after['cached_scalar_buffers']-before['cached_scalar_buffers']
+        assert downloads==flags,('download count',downloads,flags)
+        # Each small Dropout uploads one 32-byte seed/counter header.
+        assert uploads==constants+rng_headers,('upload count',uploads,constants,rng_headers)
+        assert after['host_device_copies']==before['host_device_copies']
+    def check(name,fn):
+        gc.collect();before=npu.stats();row=dict(name=name,status='passed')
+        try:row.update(fn())
+        except Exception as error:row.update(status='failed',error=str(error),traceback=traceback.format_exc())
+        gc.collect();after=npu.stats();row['npu_calls']=after['npu_calls']-before['npu_calls']
+        row['live_buffer_delta']=after['live_buffers']-after['cached_scalar_buffers']-before['live_buffers']+before['cached_scalar_buffers']
+        if row['live_buffer_delta'] or after['context_failed']:row.update(status='failed',lifecycle_error='Buffer or context')
+        checks.append(row);print(name,row['status'],row.get('error','')[:600],flush=True)
+
+    def primitives():
+        count=0
+        for shape in ((3,5),(2,3,4),(1,2,3,4)):
+            size=1
+            for dim in shape:size*=dim
+            samples=([0,1,-1,2**60,-2**60,2**63-1,-2**63] if dtype==torch.int64 else
+                     [True,False] if dtype==torch.bool else [0.,-0.,float('nan'),float('inf'),-float('inf'),2**-24,1.])
+            host=torch.tensor((samples*((size+len(samples)-1)//len(samples)))[:size],dtype=dtype).reshape(shape)
+            backing=torch.zeros((*shape[:-1],shape[-1]*2),dtype=dtype);backing[...,::2]=host;x=upload(backing)[...,::2]
+            for upper in (True,False):
+                operation=torch.triu if upper else torch.tril
+                for diagonal in (-2**63,-1,0,2,2**63-1):
+                    before=npu.stats();actual=operation(x,diagonal);transfers(before,0);bits(actual,operation(host,diagonal));count+=1
+                    assert actual.untyped_storage()._cdata!=x.untyped_storage()._cdata
+            out=torch.empty(shape,dtype=dtype,device='intel_npu')
+            assert torch.triu(x,1,out=out) is out;bits(out,torch.triu(host,1))
+        gradients=0
+        if dtype in (torch.float16,torch.float32):
+            for operation in (torch.triu,torch.tril):
+                host=torch.randn(2,3,4,dtype=dtype,requires_grad=True);x=upload(host)
+                seed=torch.randn_like(host);g=upload(seed);before=npu.stats()
+                actual=operation(x,-1);actual.backward(g);transfers(before,0)
+                expected=operation(host,-1);expected.backward(seed);bits(actual,expected);bits(x.grad,host.grad);gradients+=1
+        return dict(triangles=count,partial_read=True,bitwise_storage=True,out=True,gradient_cases=gradients)
+
+    def boolean():
+        count=0
+        for shape in ((),(2,3,4)):
+            host=torch.ones(shape,dtype=torch.bool)
+            if shape:host[0,1,2]=False
+            x=upload(host)
+            for operation in (torch.all,torch.any):
+                for dim in (None,-1,(),(0,),tuple(range(len(shape)))):
+                    for keepdim in (False,True):
+                        before=npu.stats();actual=operation(x,dim=dim,keepdim=keepdim);transfers(before,0)
+                        close(actual,operation(host,dim=dim,keepdim=keepdim),True);count+=1
+        host=torch.tensor([[True,False,True],[True,True,True]]);x=upload(host).t()
+        for operation in (torch.all,torch.any):
+            out=torch.empty(2,dtype=torch.bool,device='intel_npu');assert operation(x,dim=0,out=out) is out
+            close(out,operation(host.t(),dim=0),True)
+        for size in (8193,65537):
+            host=torch.ones(size,dtype=torch.bool);x=upload(host)
+            assert torch.all(x).item() is True and torch.any(x).item() is True
+            host[-1]=False;x=upload(host);assert torch.all(x).item() is False
+            host.zero_();x=upload(host);assert torch.any(x).item() is False
+        return dict(shape_dim_cases=count,scalar_and_empty_dims=True,transposed_out=True,tiled_sizes=[8193,65537])
+
+    def masked():
+        cases=[]
+        for mode in ('random','nonfinite','subnormal','wide'):
+            shape=(1,1,1,8193) if mode=='wide' else (1,1,1,5) if mode=='subnormal' else (2,2,3,4)
+            host=torch.randn(shape,dtype=torch.float16)
+            mask=torch.rand(shape)<.25
+            if mode=='wide':host.zero_();mask.zero_()
+            elif mode=='subnormal':host=torch.tensor([[[[0.,-17.,-16.,-14.,-10.]]]],dtype=torch.float16);mask.zero_()
+            else:mask[1,1,2]=True
+            if mode=='nonfinite':
+                host[0,0,0,0]=float('nan');mask[0,0,0,0]=True
+                host[0,1,1,1]=float('inf');mask[0,1,1,1]=False
+            expected=torch.ops.aten._masked_softmax(host,mask,-1,2);x,m=upload(host),upload(mask)
+            before=npu.stats()
+            with torch.no_grad(),npu._lock:actual=npu._native_half_masked_softmax(x,m)
+            transfers(before,0);value=actual.cpu();close(actual,expected,True)
+            finite=~torch.isnan(expected)
+            assert torch.equal(value[finite].view(torch.int16),expected[finite].view(torch.int16))
+            cases.append(mode)
+        cpu=torch.nn.MultiheadAttention(4,2,batch_first=True,dtype=torch.float16).eval()
+        with torch.no_grad():cpu.in_proj_bias.copy_(torch.linspace(-.2,.2,12).half());cpu.out_proj.bias.fill_(.03125)
+        model=copy.deepcopy(cpu).to('intel_npu');host=torch.randn(2,3,4,dtype=torch.float16)/4;x=upload(host)
+        padding=torch.tensor([[False,False,True],[False,True,False]]);mask=upload(padding)
         with torch.no_grad():
-            if case=='probe':
-                src=source();host=(torch.randn(1,16,128)/2).half()
-                for mode in ('fp16','w8a16','mixed_int8'):
-                    model=prepare(src,mode)
-                    compare(model,host,'probe-'+mode)
-                    for cache,key in model._keys.items():
-                        shape,segment,block_index=cache
-                        graph,xml,data=model.graph(shape,segment=segment,block_index=block_index)
-                        tag=f'probe-{mode}-{block_index}-{segment}'
-                        (OUT/f'{tag}.xml').write_bytes(xml);(OUT/f'{tag}.bin').write_bytes(data)
-                        (OUT/f'{tag}.blob').write_bytes(npu._sessions[key][1].graph_blob)
-            if case=='diagnose':
-                import npunlock as s
-                from npunlock.npu4000 import Elf
-                src=source();model=prepare(src,'fp16');host=(torch.randn(1,16,128)/2).half()
-                print('scales',model.activation_scales,flush=True)
-                _,refs=model.reference_cpu(host);x=host.to('intel_npu')
-                for stage in ['b0_norm1','b0_qkv','b0_attention','b0_residual1','b0_norm2','b0_ff1','b0_gelu','b0_ff2','b0_residual2']:
-                    graph,xml,data=model.graph(tuple(host.shape),stage=stage)
-                    result=npu._native.compile_ir(xml,data,build_flags='--config EXECUTION_MODE_HINT="ACCURACY"',timeout_ms=20000)
-                    program=s.load_native(result.graph_blob,graph=graph,libraries=npu._native);key=('transformer_prefix',stage)
-                    session=npu._native.create_inference_session(program.graph_blob,timeout_ms=10000,parent=npu._root_session)
-                    npu._sessions[key]=session,program;npu._session_creations+=1
-                    actual=npu._run(key,[x],graph.outputs[0].shape,torch.float16).cpu()
-                    ref=refs[stage];error=(actual.float()-ref.float()).abs()
-                    entry=dict(stage=stage,max_abs=float(error.max()),relative_l2=float(torch.linalg.vector_norm(actual.float()-ref.float())/torch.linalg.vector_norm(ref.float())))
-                    report['checks'].append(entry);print(entry,flush=True)
-                    np.savez(OUT/f'{case}-{stage}.npz',actual=actual.numpy(),reference=ref.numpy())
-                del x
-            if case=='norm-fp32':
-                host=(torch.randn(1,16,128)/2).half();x=host.to('intel_npu');v=x.float()
-                centered=v-v.mean(-1,keepdim=True)
-                variance=(centered*centered).mean(-1,keepdim=True)
-                inverse=npu._execute('rsqrt',variance+1e-5)
-                out=(centered*inverse).half();actual=out.cpu();ref=torch.nn.functional.layer_norm(host.float(),(128,)).half()
-                entry=dict(max_abs=float((actual.float()-ref.float()).abs().max()),code_changes=int((torch.round(actual.float()/.0625)!=torch.round(ref.float()/.0625)).sum()))
-                print(entry,flush=True);report['checks'].append(entry)
-                torch.testing.assert_close(actual,ref,rtol=1e-3,atol=1e-4)
-                del x,v,centered,variance,inverse,out
-            if case=='segments':
-                model=prepare(source(layers=2,affine=True),'mixed_int8')
-                host=(torch.randn(2,16,128)/2).half();x=host.to('intel_npu');value=x
-                for i,block in enumerate(model._blocks):
-                    for j,segment in enumerate(('attention','ffn')):
-                        normalized=model._norm_device(value,block['norm'][j],i,j)
-                        ref,_=model.reference_cpu(value.cpu(),segment=segment,block_index=i,normalized=normalized.cpu())
-                        out=model._run_graph(value,normalized,segment=segment,block_index=i);actual=out.cpu()
-                        torch.testing.assert_close(actual,ref,rtol=4e-3,atol=2e-3)
-                        l2=float(torch.linalg.vector_norm(actual.float()-ref.float())/torch.linalg.vector_norm(ref.float()))
-                        assert l2<1e-3
-                        entry=dict(status='passed',block=i,segment=segment,max_abs=float((actual.float()-ref.float()).abs().max()),relative_l2=l2)
-                        report['checks'].append(entry);print(entry,flush=True);value=out
-                del x,value,normalized,out,model
-            if case=='numeric':
-                for d,layers,b,length,scale in [(128,1,1,1,.5),(128,2,2,17,1.),(256,2,1,64,2.),
-                                              (128,2,1,32,.5),(256,1,2,17,1.)]:
-                    src=source(d,layers,affine=layers==2)
-                    if layers==2:
-                        for name,param in src.layers[1].named_parameters():
-                            if 'norm' not in name:param.add_(torch.randn_like(param)*.01)
-                    host=(torch.randn(b,length,d)*scale).half()
-                    cpu=copy.deepcopy(src).half()
-                    standard=cpu(host,mask=torch.triu(torch.ones(length,length,dtype=torch.bool),diagonal=1))
-                    for mode in ('fp16','w8a16','mixed_int8'):
-                        model=prepare(src,mode)
-                        original,_=model.reference_cpu(host,quantized=False)
-                        semantic=float(torch.linalg.vector_norm(original.float()-standard.float())/torch.linalg.vector_norm(standard.float()))
-                        assert semantic<2e-3,('staged vs PyTorch architecture',semantic)
-                        tag=f'numeric-d{d}-l{layers}-b{b}-s{length}-{mode}'
-                        compare(model,host,tag);report['checks'][-1]['staged_vs_pytorch_relative_l2']=semantic
-                        del model
-                    del cpu
-            if case=='causality':
-                src=source(layers=2);host=torch.randn(2,17,128).half()
-                changed=host.clone();changed[:,9:]*=-2
-                for mode in ('fp16','w8a16','mixed_int8'):
-                    model=prepare(src,mode);x=host.to('intel_npu');future=changed.to('intel_npu')
-                    a=model(x).cpu();b=model(future).cpu()
-                    assert torch.equal(a[:,:9],b[:,:9]),'future tokens affected earlier outputs'
-                    assert not torch.equal(a[:,9:],b[:,9:])
-                    report['checks'].append(dict(mode=mode,status='passed',prefix_tokens=9,future_tokens=8))
-                    del x,future,model
-            if case=='guards':
-                src=source();calibration=[torch.randn(2,32,128)]
-                model=FrozenTransformer(src,mode='mixed_int8',calibration_samples=calibration)
-                def rejects(name,fn):
-                    before=npu.stats()
-                    try:fn()
-                    except (ValueError,RuntimeError,NotImplementedError) as error:
-                        assert npu.stats()['npu_calls']==before['npu_calls'],name
-                        report['checks'].append(dict(name=name,status='rejected_before_execution',reason=str(error)))
-                    else:raise AssertionError('Missing guard: '+name)
-                rejects('unverified full W8A8',lambda:FrozenTransformer.from_float(src,mode='w8a8'))
-                rejects('missing calibration',lambda:FrozenTransformer.from_float(src,mode='mixed_int8'))
-                bad=source();bad.train();rejects('training source',lambda:prepare(bad,'fp16'))
-                bad=source();bad.layers[0].activation_relu_or_gelu=1;rejects('ReLU',lambda:prepare(bad,'fp16'))
-                bad=source();bad.layers[0].dropout.p=.1;rejects('dropout',lambda:prepare(bad,'fp16'))
-                bad=source();bad.layers[0].norm1.weight[0]=float('nan');rejects('nonfinite weights',lambda:prepare(bad,'fp16'))
-                rejects('nonfinite calibration',lambda:FrozenTransformer(src,calibration_samples=[torch.full((1,16,128),float('inf'))]))
-                rejects('CPU forward',lambda:model(torch.randn(1,16,128).half()))
-                x=torch.randn(1,16,128).half().to('intel_npu');x.requires_grad_(True)
-                with torch.enable_grad():rejects('active autograd',lambda:model(x))
-                model.train();rejects('training adapter',lambda:model(x));model.eval();del x
-                for name,host in [('FP32 forward',torch.randn(1,16,128)),('wrong width',torch.randn(1,16,64).half()),('sequence ceiling',torch.randn(1,65,128).half())]:
-                    x=host.to('intel_npu');rejects(name,lambda:model(x));del x
-                x=torch.randn(2,16,128).half().to('intel_npu');part=x[:1]
-                rejects('partial storage',lambda:model(part));del part,x
-                host=torch.randn(2,17,128).half();dense=host.transpose(0,1).contiguous().to('intel_npu').transpose(0,1)
-                actual=model(dense).cpu();contig=host.to('intel_npu');expected=model(contig).cpu()
-                torch.testing.assert_close(actual,expected,rtol=0,atol=0)
-                report['checks'].append(dict(name='full dense permutation',status='passed'))
-                # Identical snapshots reuse sessions and still expose evidence.
-                clone=FrozenTransformer(src,mode='mixed_int8',calibration_samples=calibration)
-                before=npu.stats();out=clone(contig);after=npu.stats()
-                assert before['session_creations']==after['session_creations'] and clone._evidence
-                torch.testing.assert_close(out.cpu(),expected,rtol=0,atol=0)
-                with torch.no_grad():src.layers[0].linear1.weight.add_(1)
-                assert torch.equal(model(contig).cpu(),expected),'source mutation changed frozen snapshot'
-                report['checks'].append(dict(name='snapshot immutability and shared cache evidence',status='passed'))
-                del model,clone,dense,contig,out
-            if case=='performance':
-                torch.set_num_threads(8)
-                for d,layers,b,length in [(128,1,1,1),(128,1,1,32),(256,2,1,64),(256,2,8,64)]:
-                    src=source(d,layers);host=(torch.randn(b,length,d)/2).half()
-                    models={mode:prepare(src,mode) for mode in ('fp16','w8a16','mixed_int8')}
-                    for mode,model in models.items():compare(model,host,f'performance-d{d}-l{layers}-b{b}-s{length}-{mode}')
-                    cpu=copy.deepcopy(src).half();cpu32=copy.deepcopy(cpu).float();host32=host.float()
-                    mask=torch.triu(torch.ones(length,length,dtype=torch.bool),diagonal=1)
-                    x=host.to('intel_npu')
-                    run={mode:(lambda m=model:m(x)) for mode,model in models.items()}
-                    run['cpu_fp16']=lambda:cpu(host,mask=mask)
-                    run['cpu_fp32']=lambda:cpu32(host32,mask=mask)
-                    for _ in range(3):
-                        for fn in run.values():fn()
-                    before=npu.stats();samples={mode:[] for mode in run};tags=list(run)
-                    for round_index in range(21):
-                        index=round_index%len(tags)
-                        for tag in tags[index:]+tags[:index]:
-                            start=time.perf_counter();run[tag]();samples[tag].append((time.perf_counter()-start)*1000)
-                    after=npu.stats()
-                    for field in ('host_upload_copies','host_download_copies','session_creations'):assert before[field]==after[field],field
-                    entry=dict(shape=[b,length,d],layers=layers,median_ms={k:statistics.median(v) for k,v in samples.items()},
-                        samples_ms=samples,cpu_threads=torch.get_num_threads(),warm_host_copies_and_compiles=0,
-                        graph_constant_bytes={mode:sum(e['constant_bytes'] for e in model._evidence.values()) for mode,model in models.items()})
-                    report['timings'].append(entry);print({k:v for k,v in entry.items() if k!='samples_ms'},flush=True)
-                    run.clear();models.clear();del model,x,cpu,cpu32,fn
-        if 'model' in locals():del model
-        gc.collect();report['stats_before_shutdown']=npu.stats()
-        assert npu.stats()['live_buffers']==npu.stats()['cached_scalar_buffers']
-        npu.shutdown();report['final_stats']=npu.stats()
-        assert not npu.stats()['context_failed'] and npu.stats()['live_buffers']==0
-        report['status']='completed_diagnostic' if case.startswith('diagnose') else 'passed'
-    except Exception as error:
-        report.update(status='failed',error=str(error),traceback=traceback.format_exc(),failure_stats=npu.stats())
-        print(report['traceback'],flush=True)
-    (OUT/f'{case}.json').write_text(json.dumps(report,indent=2))
-    return int(report['status'] not in ('passed','completed_diagnostic'))
+            for average in (False,True):
+                expected=cpu(host,host,host,key_padding_mask=padding,need_weights=True,average_attn_weights=average)
+                before=npu.stats();actual=model(x,x,x,key_padding_mask=mask,need_weights=True,average_attn_weights=average);transfers(before,0)
+                for a,b in zip(actual,expected):close(a,b)
+        cases.append('biased-native-mha-averaged-and-per-head')
+        return dict(cases=cases,native_cpu_half_rounding=True,finite_bits_exact=True,masked_nan_ignored=True,
+                    fully_masked_rows_nan=True,subnormal_and_tile_boundary=True)
+
+    def compare_container(cpu,host,kwargs,train,flags):
+        model=copy.deepcopy(cpu).to('intel_npu');cpu.train(train);model.train(train);x=upload(host)
+        options={k:upload(v) if isinstance(v,torch.Tensor) else v for k,v in kwargs.items()}
+        with torch.set_grad_enabled(train):
+            saved=torch.intel_npu.get_rng_state()
+            with torch.backends.mkldnn.flags(enabled=False),cpu_rng_reference(saved) as tracker:expected=cpu(host,**kwargs)
+            seed=torch.randn_like(expected)/8;gradient=upload(seed)
+            cpu_state=torch.get_rng_state();before=npu.stats();actual=model(x,**options)
+            if train:actual.backward(gradient)
+            transfers(before,flags,8 if train else 0)
+            assert torch.equal(cpu_state,torch.get_rng_state()) and torch.equal(tracker.get_state(),torch.intel_npu.get_rng_state())
+            if train:
+                with torch.backends.mkldnn.flags(enabled=False):expected.backward(seed)
+        close(actual,expected)
+        if train:
+            close(x.grad,host.grad)
+            for a,b in zip(model.parameters(),cpu.parameters()):close(a.grad,b.grad)
+
+    def container():
+        cases=[]
+        for mode in ('default-train','causal-padding-train','hinted-train','prenorm-train','sequence-train','default-eval','dense-padding-eval','dense-causal-eval'):
+            train=mode.endswith('train');sequence=mode=='sequence-train';pre=mode=='prenorm-train'
+            dense=pre or sequence or mode.startswith('dense-')
+            layer=torch.nn.TransformerEncoderLayer(4,2,dim_feedforward=8,dropout=.25,batch_first=not sequence,
+                norm_first=pre,activation='gelu' if pre or sequence else 'relu',dtype=dtype)
+            cpu=torch.nn.TransformerEncoder(layer,2,norm=torch.nn.LayerNorm(4,dtype=dtype),enable_nested_tensor=not dense)
+            host=(torch.randn((3,2,4) if sequence else (2,3,4),dtype=dtype)/4).requires_grad_(train)
+            kwargs={};flags=0
+            if mode in ('causal-padding-train','hinted-train','prenorm-train','dense-causal-eval'):
+                kwargs['mask']=torch.ones(3,3,dtype=torch.bool).triu(1);flags=1
+            if mode=='hinted-train':kwargs['is_causal']=True;flags=0
+            if mode in ('causal-padding-train','dense-padding-eval','dense-causal-eval'):
+                kwargs['src_key_padding_mask']=torch.tensor([[False,False,True],[False,True,True]])
+            if mode=='dense-causal-eval':
+                with torch.inference_mode():compare_container(cpu,host,kwargs,False,flags)
+            else:compare_container(cpu,host,kwargs,train,flags)
+            cases.append(mode);print('container',mode,'passed',flush=True)
+        return dict(cases=cases,layers=2,final_layer_norm=True,all_parameter_and_input_gradients=True,
+                    same_mask_cpu_reference=True,default_fastpath_unchanged=True)
+
+    def classifier():
+        cpu=token_classifier();model=copy.deepcopy(cpu).to('intel_npu')
+        host=torch.tensor([[2,2,0],[3,4,0]],dtype=torch.int64);target=torch.tensor([0,2]);x,labels=upload(host),upload(target)
+        def optimizer(net):return torch.optim.SGD(net.parameters(),lr=.02,momentum=.5,foreach=False,fused=False)
+        opts=[optimizer(net) for net in (cpu,model)];checkpoint=io.BytesIO();losses=[]
+        for step in range(3):
+            for opt in opts:opt.zero_grad(set_to_none=True)
+            with cpu_rng_reference(torch.intel_npu.get_rng_state()) as tracker:expected=torch.nn.functional.cross_entropy(cpu(host),target)
+            cpu_state=torch.get_rng_state();before=npu.stats();logits=model(x);loss=torch.nn.functional.cross_entropy(logits,labels)
+            loss.backward();opts[1].step();transfers(before,4,8)
+            assert torch.equal(cpu_state,torch.get_rng_state()) and torch.equal(tracker.get_state(),torch.intel_npu.get_rng_state())
+            expected.backward();opts[0].step();close(loss,expected)
+            for a,b in zip(model.parameters(),cpu.parameters()):close(a.grad,b.grad);close(a,b)
+            assert torch.count_nonzero(model.embedding.weight.grad.cpu()[0])==0
+            losses.append(loss.item());print('classifier step',step+1,losses[-1],flush=True)
+            state=dict(model=cpu_tree(model.state_dict()),optimizer=cpu_tree(opts[1].state_dict()),rng=torch.intel_npu.get_rng_state())
+            if step==0:torch.save(state,checkpoint)
+            if step==1:second=state;second_loss=loss.item()
+        checkpoint.seek(0);saved=torch.load(checkpoint,weights_only=True)
+        restored=token_classifier().to('intel_npu');restored.load_state_dict(saved['model']);opt=optimizer(restored);opt.load_state_dict(saved['optimizer'])
+        torch.intel_npu.set_rng_state(saved['rng']);opt.zero_grad(set_to_none=True)
+        before=npu.stats();loss=torch.nn.functional.cross_entropy(restored(x),labels);loss.backward();opt.step();transfers(before,4,8)
+        assert loss.item()==second_loss and torch.equal(second['rng'],torch.intel_npu.get_rng_state())
+        for name,value in cpu_tree(restored.state_dict()).items():torch.testing.assert_close(value,second['model'][name],rtol=0,atol=0)
+        current=cpu_tree(opt.state_dict())
+        assert current['param_groups']==second['optimizer']['param_groups']
+        for key,state in current['state'].items():
+            for name,value in state.items():torch.testing.assert_close(value,second['optimizer']['state'][key][name],rtol=0,atol=0)
+        cpu.load_state_dict(second['model']);cpu.eval();restored.eval();saved_rng=torch.intel_npu.get_rng_state()
+        with torch.no_grad():
+            expected=cpu(host);before=npu.stats();actual=restored(x);transfers(before,2);close(actual,expected)
+        assert torch.equal(saved_rng,torch.intel_npu.get_rng_state())
+        return dict(parameters=sum(p.numel() for p in model.parameters()),steps=3,losses=losses,embedding_positions_encoder_pool_head_ce=True,
+                    independent_cpu_gradients_and_momentum_updates=True,fresh_model_optimizer_checkpoint_bitwise=True,
+                    repeated_indices_and_zero_padding_gradient=True,training_scalar_downloads=4,eval_scalar_downloads=2)
+
+    def contracts():
+        x=upload(torch.ones(2,3));mask=upload(torch.ones(2,3,dtype=torch.bool));out=torch.empty(2,device='intel_npu',dtype=torch.bool)
+        before=npu.stats();rng=torch.intel_npu.get_rng_state();count=0
+        actions=[lambda:torch.triu(x.view(-1)),lambda:torch.triu(x,out=x),lambda:torch.tril(x,out=mask),
+                 lambda:torch.all(x),lambda:torch.any(mask,dim=3),lambda:torch.all(mask,dim=(0,-2)),
+                 lambda:torch.all(mask,dim=0,out=out),lambda:torch.all(mask,dim=(),out=mask)]
+        for fn in actions:
+            try:fn()
+            except (ValueError,RuntimeError,NotImplementedError,IndexError):count+=1
+            else:raise AssertionError('Missing triangle/BOOL reduction guard')
+        assert npu.stats()['npu_calls']==before['npu_calls'] and torch.equal(rng,torch.intel_npu.get_rng_state())
+        layer=torch.nn.TransformerEncoderLayer(4,2,dim_feedforward=8,dropout=0,batch_first=True)
+        model=torch.nn.TransformerEncoder(layer,2).to('intel_npu').eval();src=upload(torch.randn(2,3,4)/4)
+        padding=upload(torch.tensor([[False,False,True],[False,True,True]]))
+        with torch.no_grad():
+            try:model(src,src_key_padding_mask=padding)
+            except (ValueError,NotImplementedError) as error:unsupported=str(error).splitlines()[0]
+            else:raise AssertionError('Unexpected unverified default NestedTensor path')
+        return dict(metadata_rejections=count,no_submission_on_rejection=True,default_nested_padding_not_supported=unsupported,
+                    dense_padding_requires_enable_nested_tensor_false=True)
+
+    check(case+'-'+precision,locals()[case]);gc.collect()
+    assert torch.backends.mha.get_fastpath_enabled()==initial_fastpath
+    npu.shutdown();final=npu.stats()
+    healthy=final['closed'] and not final['context_failed'] and all(final[k]==0 for k in (
+        'live_buffers','cached_buffer_blocks','cached_scalar_buffers','quarantined_buffer_bytes','cached_sessions'))
+    sources=('torch_intel_npu.py','torch_npu_autograd.py','torch_npu_geometry.py','torch_npu_transformer_demo.py',
+             'npunlock-probe/torch-device/_torch_intel_npu.pyd')
+    return dict(status='passed' if healthy and all(r['status']=='passed' for r in checks) else 'failed',checks=checks,final_stats=final,
+                fastpath_enabled=initial_fastpath,source_sha256={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in sources})
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--case',choices=['probe','diagnose','norm-fp32','segments','numeric','causality','guards','performance'],default='probe');parser.add_argument('--child',action='store_true')
-    args=parser.parse_args();OUT.mkdir(parents=True,exist_ok=True)
-    if args.child:return execute(args.case)
-    with (OUT/f'{args.case}.log').open('w',encoding='utf-8') as log:
-        result=subprocess.run([sys.executable,__file__,'--child','--case',args.case],stdout=log,stderr=log,timeout=300)
-    print((OUT/f'{args.case}.log').read_text(encoding='utf-8'),flush=True)
-    return result.returncode
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--case',choices=('all','probe')+CASES,default='all')
+    parser.add_argument('--precision',choices=('all','float16','float32','int64','bool'),default='all');args=parser.parse_args()
+    if args.case in PRECISIONS and args.precision!='all' and args.precision not in PRECISIONS[args.case]:
+        parser.error(f'{args.case} supports precisions {PRECISIONS[args.case]}')
+    if args.case=='probe':result=probe();name='probe'
+    elif args.case=='all' or args.precision=='all':
+        for case in CASES if args.case=='all' else (args.case,):
+            for precision in PRECISIONS[case] if args.precision=='all' else tuple(p for p in PRECISIONS[case] if p==args.precision):
+                if subprocess.run([sys.executable,'-B',__file__,'--case',case,'--precision',precision]).returncode:return 1
+        return 0
+    else:result=execute(args.case,args.precision);name=args.case+'-'+args.precision
+    OUT.mkdir(parents=True,exist_ok=True);(OUT/(name+'.json')).write_text(json.dumps(result,indent=2),encoding='utf-8')
+    return int(result['status'] not in ('passed','probe-complete'))
 
 
 if __name__=='__main__':raise SystemExit(main())

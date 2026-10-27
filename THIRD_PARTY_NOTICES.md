@@ -1,6 +1,6 @@
 # 第三方来源与许可说明
 
-本说明针对 2026-10-11 源码整理快照。主许可证为 Apache-2.0，见 `LICENSE`。
+本说明保留2026-10-11源码整理快照的来源，并包含2026-10-18的本地增补。主许可证为 Apache-2.0，见 `LICENSE`。
 主许可证不替换以下来源的版权和许可证。引用文献与代码再分发声明是两件事，均需保留。
 
 ## 直接保留或改编的内容
@@ -14,9 +14,10 @@
 | [Maratyszcza/FP16](https://github.com/Maratyszcza/FP16/blob/782eea126dc5c755827be751a099eb01826175cf/include/fp16/fp16.h) | `npunlock/tests/fixtures/npu4000/rmsnorm.c` 和 `research/build_rmsnorm_reduce.py` 中的 FP16→FP32 思路/函数改编为 SHAVE 四路 SIMD；生成的 RMSNorm ELF 也对应此源码 | `LICENSES/FP16.txt` 与内核旁 `FP16_LICENSE`，MIT；原版权见 `NOTICE` |
 | [Level Zero v1.17](https://github.com/oneapi-src/level-zero/tree/5604d3963dec3c98d4e56ccf6fef0671a47114a2) / [Intel NPU extensions](https://github.com/intel/level-zero-npu-extensions/tree/ddbf8d65e2e22150e23efd383839aa80f84d4dac) | `npunlock/src/workers/level_zero_min.h` 中重新命名并缩减的 API/ABI 声明；`research/dpu_diagnostic_extra.c` 的 profiling 声明。并未打包 loader/driver 实现 | `LICENSES/Level-Zero.txt`、`LICENSES/Intel-NPU-Extensions.txt`，MIT |
 | [Intel NPU40XX firmware headers](https://github.com/openvinotoolkit/npu_compiler/blob/0b38f7d42113ff329ac2bdd33583d123de4ccf2f/src/vpux_compiler/include/vpux/compiler/NPU40XX/dialect/NPUReg40XX/firmware_headers/details/api/vpu_nnrt_shavert.h) | `npunlock/python/npunlock/npu4000.py` 与 `torch_npu_lowbit.py` 的结构尺寸、字段偏移、dtype 和任务语义参考；保守保留 ABI 定义来源的 MIT 声明 | `LICENSES/Intel-Firmware-Headers-MIT.txt`；这些文件的 SPDX 是 MIT，不能只套仓库根 Apache-2.0 |
+| [PyTorch moments_utils.h](https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/cpu/moments_utils.h) | 2026-10-18新增`resident_layernorm.c`和`layernorm_mixed_moments.py`改编其Welford分组/级联合并顺序为标量SHAVE与独立研究模拟；未移植AVX指令。整数融合辅助运算为本项目实现 | `LICENSES/PyTorch.txt`，BSD-3-Clause；本机2.14.1+cpu头文件哈希见`provenance/layernorm-moments.json` |
 
 新增 ELF 内核为本项目 C 源码的编译产物；保留源码、汇编与构建 manifest 供核对，不把它们说成从 OpenVINO 复制的现成计算内核。
-本次未重新编译，原 C/汇编/ELF 字节均保留；构建参数和哈希由现有 kernel manifest 记录。
+2026-10-11快照未重新编译原内核；后续新增内核的源码、汇编、构建脚本与哈希由配套manifest记录。
 
 ## 设计参考与外部依赖
 

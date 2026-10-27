@@ -65,3 +65,86 @@
   url = {https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct},
   note = {Validation model; weights not redistributed in the source snapshot}
 }
+@misc{wikitext_validation,
+  author = {Stephen Merity and Caiming Xiong and James Bradbury and Richard Socher},
+  title = {{WikiText}: validation data associated with Pointer Sentinel Mixture Models},
+  year = {2016},
+  url = {https://huggingface.co/datasets/Salesforce/wikitext/tree/b08601e04326c79dfdd32d625aee71d232d685c3},
+  note = {Eight fixed test slices; dataset text not redistributed}
+}
+@misc{bounded_context_perplexity,
+  author = {{Hugging Face}},
+  title = {Perplexity of fixed-length models},
+  url = {https://huggingface.co/docs/transformers/perplexity},
+  note = {Accessed 2026-10-15; context/stride interpretation, no copied code}
+}
+@misc{dataset_viewer_rows,
+  author = {{Hugging Face}},
+  title = {Download slices of rows},
+  url = {https://huggingface.co/docs/dataset-viewer/rows},
+  note = {Accessed 2026-10-15; fixed-revision JSON sampling}
+}
+@book{abramowitz_stegun_erf,
+  editor = {Milton Abramowitz and Irene A. Stegun},
+  title = {Handbook of Mathematical Functions},
+  publisher = {National Bureau of Standards},
+  year = {1964},
+  pages = {299},
+  url = {https://personal.math.ubc.ca/~cbm/aands/page_299.htm},
+  note = {Equation 7.1.26; mathematical coefficients used in the original SHAVE GELU implementation}
+}
+
+@online{intel_unified_telemetry,
+  author = {{Intel Corporation}},
+  title = {Intel Unified Telemetry},
+  url = {https://www.intel.com/content/www/us/en/developer/tools/intel-unified-telemetry.html},
+  urldate = {2026-10-19},
+  note = {External v0.2.0-beta1.1 SoCWatch energy measurement; not a runtime dependency}
+}
+
+@online{random123_philox,
+  author = {{D. E. Shaw Research}},
+  title = {Random123: Philox counter-based random number generator},
+  url = {https://github.com/DEShawResearch/random123/blob/main/include/Random123/philox.h},
+  urldate = {2026-10-19},
+  note = {Algorithm reference for the independent on-SHAVE Philox4x32-10 implementation; no runtime dependency}
+}
+
+@online{microsoft_dxcore_adapter_state,
+  author = {{Microsoft}},
+  title = {DXCoreAdapterState enumeration},
+  url = {https://learn.microsoft.com/en-us/windows/win32/api/dxcore_interface/ne-dxcore_interface-dxcoreadapterstate},
+  urldate = {2026-10-19},
+  note = {Engine running time and memory telemetry; not arithmetic utilization}
+}
+
+@online{intel_core_ultra_258v,
+  author = {{Intel Corporation}},
+  title = {Intel Core Ultra 7 Processor 258V Specifications},
+  url = {https://www.intel.com/content/www/us/en/products/sku/240957/intel-core-ultra-7-processor-258v-12m-cache-up-to-4-80-ghz/specifications.html},
+  urldate = {2026-10-19},
+  note = {47 TOPS INT8 specification reference, not a measured result}
+}
+
+@misc{dao2022flashattention,
+  author = {Tri Dao and Daniel Y. Fu and Stefano Ermon and Atri Rudra and Christopher R{\'e}},
+  title = {{FlashAttention}: Fast and Memory-Efficient Exact Attention with IO-Awareness},
+  year = {2022},
+  eprint = {2205.14135},
+  archivePrefix = {arXiv},
+  doi = {10.48550/arXiv.2205.14135},
+  url = {https://arxiv.org/abs/2205.14135v2},
+  note = {Algorithm reference for this project's experimental NPU SHAVE tiled forward and recomputation; no CUDA implementation copied}
+}
+
+@inproceedings{zhang2024lqer,
+  author = {Cheng Zhang and Jianyi Cheng and George Anthony Constantinides and Yiren Zhao},
+  title = {{LQER}: Low-Rank Quantization Error Reconstruction for {LLM}s},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning},
+  series = {Proceedings of Machine Learning Research},
+  volume = {235},
+  pages = {58763--58779},
+  year = {2024},
+  url = {https://proceedings.mlr.press/v235/zhang24j.html},
+  note = {Concept reference for optional W8 residual factors; local ridge-whitened SVD implementation, no upstream code copied}
+}
