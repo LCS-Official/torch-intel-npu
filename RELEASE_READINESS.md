@@ -83,7 +83,9 @@ python -B tools/export_source_release.py --verify .
 
 ## 云端CI与剩余限制
 
-发布前重新读取[旧CI run](https://github.com/LCS-Official/torch-intel-npu/actions/runs/38208763066)的检查注释，明确为“The job was not started because your account is locked due to a billing issue.”，不是执行测试后的数值/源码失败。本地离线及真机检查不等于GitHub托管CI通过；本版新提交的实际云端状态以[Actions](https://github.com/LCS-Official/torch-intel-npu/actions)为准。账单限制需账号方/GitHub处理，代码发布不能解除它。
+发布分支源码提交`178c9a8aff822706d00b5ae716253de8f485cd50`的[push CI](https://github.com/LCS-Official/torch-intel-npu/actions/runs/40454487337)和[PR CI](https://github.com/LCS-Official/torch-intel-npu/actions/runs/40454491418)均已实际运行并通过。两次均在Windows/Python3.12安装核心依赖，日志记录根目录192项、Python API32项、导出器6项，共219项通过、11项可选依赖跳过；云端没有NPU，不能代替上述真机检查。分支/PR按设计跳过严格发布manifest步骤，tag工作流才执行该检查。
+
+发布前读取的[旧CI run](https://github.com/LCS-Official/torch-intel-npu/actions/runs/38208763066)确实曾被账号账单限制阻止启动，但本轮两次成功运行未再遇到该阻止；这里仅报告CI执行事实，不推断账单状态。后续main/tag提交的实际状态见[Actions](https://github.com/LCS-Official/torch-intel-npu/actions)。
 
 本轮没有重跑所有历史大容量/长时间压力实验、全部算子配置或低位整网质量校准，也没有在另一台设备/驱动验证。S45保留的16个W8校正质量失败及INT4/NF4整网未认证，均不因此次发布变为已解决。
 
