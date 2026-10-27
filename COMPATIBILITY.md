@@ -82,6 +82,13 @@
 | S43 | [torch_npu_flash_optimization_demo.py](torch_npu_flash_optimization_demo.py)及S42回归 | SHAVE常规算术热路径、FP32次正规数前反向、自动32/128或容量受限分块；预热/冷调用、math对照与边界见[报告](npunlock-probe/research/results/flash-optimization/REPORT.md) |
 | S44 | [w8_lowrank_quality.py](npunlock-probe/research/w8_lowrank_quality.py)及[审计](npunlock-probe/research/w8_lowrank_audit.py) | 可选W8＋FP16低秩修正、30层整网、固定独立回归/NLL/PPL/自主生成；尚未通过全部质量门槛，见[报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md) |
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
+| S47 | [W8逐层诊断](npunlock-probe/research/w8_layerwise_quality.py) | 30层/210投影、内部单层/投影FP16保护及独立CPU/NPU/KV对照；候选退化不采用，见[报告](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md) |
+
+## S47 W8逐层质量诊断（v0.2.0之后的研究）
+
+新增30层/210投影误差定位，区分相同输入的局部误差、前缀传播和非线性交互；内部8条/290位置筛选30种整层和7种单投影FP16保护。第25层整层保护虽在内部246→250/290，独立NPU前向历史126→125/142、新集合113→111/128，原失败轨迹KV82→81/98，故不采用。210个投影的rank32局部误差均降低，但跨层累积及整网门槛仍未解决；去均值仅作诊断。
+
+五个最终真机进程15,390次提交均正常关闭，FP16前向270/270通过；没有生产后端、内核、默认参数、依赖或原生构建变化。复现、原16个失败位置及边界见[报告](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md)。INT4/NF4整网、PPL与自由生成未新增认证。
 
 ## S45 缓存保护及低位边界
 
