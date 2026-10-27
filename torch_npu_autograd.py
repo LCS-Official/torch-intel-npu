@@ -787,6 +787,28 @@ class Softmax(torch.autograd.Function):
         return npu._softmax_backward(gradient, output, ctx.dim, ctx.dtype), None, None
 
 
+class LossSourceGuard(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx,result,*sources):
+        ctx.save_for_backward(*sources)
+        return _fresh_output(result)
+
+    @staticmethod
+    @once_differentiable
+    def backward(ctx,gradient):
+        sources=ctx.saved_tensors
+        return (gradient,)+(None,)*len(sources)
+
+
+def _guard_loss_sources(result,x,target,*,nll=False):
+    if not _active(result) or x.ndim<=2:return result
+    sources=[]
+    # Native 2D losses save original sources; other spatial ranks first copy strided inputs.
+    if x.ndim==4 and not target.is_contiguous():sources.append(target)
+    if nll and (x.ndim==4 or x.is_contiguous()):sources.append(x)
+    return LossSourceGuard.apply(result,*sources) if sources else result
+
+
 class NLL(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, target, weight, reduction, ignore_index):
@@ -1067,7 +1089,8 @@ def nll2d_forward(x,target,weight,reduction,ignore_index):
     shape=target.shape
     values,labels=npu._classification_input(x,target,weight,reduction,ignore_index)
     result,total=nll(values,labels,weight,reduction,ignore_index)
-    return (result.view(shape) if reduction==0 else result),total
+    result=result.view(shape) if reduction==0 else result
+    return _guard_loss_sources(result,x,target,nll=True),total
 
 
 _library.impl('nll_loss2d_forward',nll2d_forward)
@@ -1075,9 +1098,11 @@ _library.impl('nll_loss2d_forward',nll2d_forward)
 
 def nll_nd(x, target, weight=None, reduction=1, ignore_index=-100):
     shape = target.shape
+    source_x,source_target=x,target
     x, target = npu._classification_input(x, target, weight, reduction, ignore_index)
     result = nll(x, target, weight, reduction, ignore_index)[0]
-    return result.view(shape) if reduction == 0 else result
+    result=result.view(shape) if reduction==0 else result
+    return _guard_loss_sources(result,source_x,source_target,nll=True)
 
 
 for _name in ('nll_loss', 'nll_loss_nd'):

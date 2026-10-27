@@ -229,6 +229,67 @@ def execute(case,precision):
             except RuntimeError as error:assert 'version' in str(error) or 'inplace' in str(error)
             else:raise AssertionError('missing saved tensor version guard')
         checks.append(dict(name='labels-and-saved-versions',invalid_int64=True,weight_version=True,target_version=True))
+    def versions():
+        mismatches=[]
+        scenarios=((False,False,'none'),(True,True,'none'),(False,True,'target'),
+                   (False,False,'target'),(True,True,'input'),(False,True,'input'),
+                   (False,True,'weight'),(False,True,'unrelated'))
+        def version_error(loss,*,retain_graph=False):
+            try:loss.backward(retain_graph=retain_graph)
+            except RuntimeError as error:
+                if 'version' in str(error) or 'inplace' in str(error):return True
+                raise
+            return False
+        def function(kind,x,t,w):
+            if kind=='native2d':return A.nll_loss2d_forward(x,t,w,1,-100)[0]
+            if kind=='nll':return F.nll_loss(x,t,weight=w)
+            return F.cross_entropy(x,t,weight=w,label_smoothing=.2 if kind=='smooth' else 0.)
+        for shape in ((2,3),(2,3,2),(2,3,2,2),(2,3,2,2,2),(2,3,33,365)):
+            for kind in ('ce','smooth','nll','native2d'):
+                if kind=='native2d' and len(shape)!=4:continue
+                selected=scenarios if prod(shape)<=65536 else ((False,True,'none'),(False,True,'target'),(False,True,'input'))
+                for strided_x,strided_t,change in selected:
+                    size=(*shape[:-1],shape[-1]*(2 if strided_x else 1))
+                    hx=torch.randn(size,dtype=dtype);dx=upload(hx)
+                    x=(hx[...,::2] if strided_x else hx).detach().requires_grad_()
+                    value=(dx[...,::2] if strided_x else dx).detach().requires_grad_()
+                    target_shape=(shape[0],*shape[2:]);size=(*target_shape[:-1],target_shape[-1]*(2 if strided_t else 1))
+                    ht=(torch.arange(prod(size)).reshape(size)%3).long();dt=upload(ht)
+                    target=ht[...,::2] if strided_t else ht;labels=dt[...,::2] if strided_t else dt
+                    hw=torch.tensor([.5,1.25,2.],dtype=dtype);dw=upload(hw)
+                    expected=function(kind,x,target,hw);before=npu.stats()['npu_calls']
+                    actual=function(kind,value,labels,dw);close(actual,expected)
+                    if change!='none':
+                        a,b=((ht.clone(),dt.clone()) if change=='unrelated' else
+                             {'target':(ht,dt),'input':(hx,dx),'weight':(hw,dw)}[change])
+                        with torch.no_grad():a.add_(0);b.add_(0)
+                    wanted=version_error(expected);got=version_error(actual)
+                    calls=npu.stats()['npu_calls']-before
+                    name=f'{kind}-{shape}-x{strided_x}-t{strided_t}-{change}'
+                    if wanted!=got:mismatches.append(name)
+                    elif not wanted:
+                        close(value.grad,x.grad)
+                        a,b=value.grad.detach().cpu().double(),x.grad.double()
+                        relative=float((a-b).norm()/b.norm().clamp_min(1e-30))
+                        assert relative<(.01 if dtype==torch.float16 else 1e-4),(name,relative)
+                    checks.append(dict(name=name,cpu_version_error=wanted,npu_version_error=got,npu_calls=calls))
+        for kind in ('ce','nll','native2d'):
+            hx=torch.randn(2,3,2,2,dtype=dtype);dx=upload(hx).requires_grad_();hx.requires_grad_()
+            ht=torch.zeros(2,2,4,dtype=torch.int64);dt=upload(ht);hw=torch.ones(3,dtype=dtype);dw=upload(hw)
+            expected=function(kind,hx,ht[...,::2],hw);actual=function(kind,dx,dt[...,::2],dw)
+            assert not version_error(expected,retain_graph=True) and not version_error(actual,retain_graph=True)
+            close(dx.grad,hx.grad)
+            with torch.no_grad():ht.add_(0);dt.add_(0)
+            wanted=version_error(expected);got=version_error(actual)
+            name=f'{kind}-retained-graph'
+            if wanted!=got:mismatches.append(name)
+            checks.append(dict(name=name,cpu_version_error=wanted,npu_version_error=got))
+            with torch.no_grad():
+                expected=function(kind,hx,ht[...,::2],hw);actual=function(kind,dx,dt[...,::2],dw)
+                assert not actual.requires_grad;close(actual,expected)
+            checks.append(dict(name=kind+'-no-grad',requires_grad=False))
+        print('version checks',len(checks),'mismatches',len(mismatches),mismatches[:8],flush=True)
+        assert not mismatches,mismatches
     def training():
         cpu=torch.nn.Sequential(torch.nn.Linear(4,8),torch.nn.Tanh(),torch.nn.Linear(8,3)).to(dtype)
         model=copy.deepcopy(cpu).to('intel_npu');x=torch.randn(3,4,dtype=dtype)*.2;dx=upload(x)
@@ -273,6 +334,6 @@ def execute(case,precision):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case',choices=('hard','soft','mse','native','contracts','training','tiled','tall'),required=True)
+    parser.add_argument('--case',choices=('hard','soft','mse','native','contracts','versions','training','tiled','tall'),required=True)
     parser.add_argument('--precision',choices=('float16','float32'),default='float32')
     args=parser.parse_args();raise SystemExit(execute(args.case,args.precision))

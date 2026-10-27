@@ -301,3 +301,5 @@ C盘删除本轮60份SmolLM图缓存（322.15MiB）及npunlock旧ETL跟踪（8Mi
 
 
 2026-10-27 S45：修正W8低秩因子的prefill磁盘缓存身份；Smol图改为承压时同族失效重建，分组计划/固定族/超预算Smol临时图提前保护，新增公开graph budget setter，默认仍1536项/512MiB。原始原生库下两轮FP16前向/KV共660次、216次淘汰通过；256MiB安全拒绝后同进程512MiB重试通过，四种因子缓存miss/hit逐位一致。两个新校准候选未胜出，原NPU 16个失败位置完整复现，14处去整体偏移后剩余L2低于门槛但不放宽原标准；新128位置前向仍有token退化，INT4/NF4整网未扩展。7项正式真机进程（含旧四层FP16/W8容量脚本同步回归）共10,486次提交正常关闭，240项离线检查、4222位置严格标量审计及170项内核/原生/构建来源指纹通过。原生诊断改动均撤回，C++源码不变、session DLL恢复原值，本地PYD从未修改源码重建；无新依赖、环境、模型下载或图表。两阶段清理共54份原始JSON/JSONL/NPZ、临时图缓存、重复诊断源码/库及本轮obj/exp，共156,547,698字节（149.3MiB）；第一阶段2533份保留文件SHA一致，后补测试脚本/状态说明，末阶段同样2533份保留文件SHA一致，随后补充报告清理记录。见[缓存报告](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[质量报告](npunlock-probe/research/results/w8-guarded-quality/REPORT.md)。最终只保留实现、测试、运行组件和Markdown报告，source-release未改，未推送GitHub。
+
+2026-10-27 S46：补齐分类损失布局复制后的原标签／NLL输入版本保护，按本机CPU不同rank复制语义处理，13处已复现差异归零。247项离线检查、4个正式真机进程共25919次提交通过；仅Python变更，27份C及66对ELF/汇编不变，无宿主重建或新增依赖。清理13 份原始JSON/日志，共93905 字节，239份保留文件哈希一致；保留实现、测试、复现与[报告](npunlock-probe/research/results/loss-source-versions/REPORT.md)。v0.2.0发布tag继续保留原快照，本轮使用独立修复分支。

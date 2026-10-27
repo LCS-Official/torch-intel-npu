@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-27，v0.2.0 Experimental Preview（纳入截至S45的累计改进）。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-27，当前开发新增S46；公开v0.2.0 Experimental Preview包含截至S45的改进。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -82,6 +82,13 @@
 | S43 | [torch_npu_flash_optimization_demo.py](torch_npu_flash_optimization_demo.py)及S42回归 | SHAVE常规算术热路径、FP32次正规数前反向、自动32/128或容量受限分块；预热/冷调用、math对照与边界见[报告](npunlock-probe/research/results/flash-optimization/REPORT.md) |
 | S44 | [w8_lowrank_quality.py](npunlock-probe/research/w8_lowrank_quality.py)及[审计](npunlock-probe/research/w8_lowrank_audit.py) | 可选W8＋FP16低秩修正、30层整网、固定独立回归/NLL/PPL/自主生成；尚未通过全部质量门槛，见[报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md) |
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
+| S46 | [损失版本检查](torch_npu_loss_extended_demo.py)的--case versions | 分类损失布局复制后的来源版本、不同rank的CPU复制策略、跨packet与训练回归；见[报告](npunlock-probe/research/results/loss-source-versions/REPORT.md) |
+
+## S46 分类损失的原始Tensor版本保护（v0.2.0之后）
+
+CE、NLL及原生nll_loss2d_forward补齐布局复制后的原始Tensor版本保护：4D非连续硬标签及其共享storage别名被修改时，反向按本机CPU行为拒绝；空间NLL还保留4D原始输入以及其他空间rank的连续原始输入版本。3D/5D复制非连续源后的接受行为与CPU一致，不一律增加拒绝。重复retain_graph反向继续检查版本，no_grad入口保持原行为。
+
+共享检查只保存PyTorch原始Tensor引用，在相关反向计算前解包触发版本检查；不新增设备计算、CPU payload回退或SHAVE/宿主构建。仍仅承诺已覆盖的一阶路径，不提供任意view原地写入或高阶梯度。FP16/FP32真机、跨NLL packet与训练回归见[报告](npunlock-probe/research/results/loss-source-versions/REPORT.md)。
 
 ## S45 缓存保护及低位边界
 
@@ -228,7 +235,7 @@ S32阶段冻结DPU/低位模型和矩形GEMM仍pinned，后来由S33补入调用
 
 普通Conv2d输出、原生MHA的score/projection、encoder FFN和多输出纯DMA拼接改用当前134,217,728元素检查；原生Half掩码softmax沿用当前行分块存储上限。实际越过旧容量的输出/梯度、FFN、mask和DMA范围见S31报告；MHA大score只做元数据边界检查，不推导最大attention认证。原生encoder仍是已列推理入口。
 
-连续空间标签现在直接复用contiguous视图，减少副本并保留原标签version；非连续空间标签复制后的原始来源版本追踪仍有缺口。保留卷积窗口/fold、索引/Embedding、排序与selection的浮点元数据及packet界限；每行softmax<=65536、1536张图和单buffer存储不变。许多宽类别行、不同形状或不对齐偏移仍可能触及缓存。没有新增BCE/KL/CTC家族、长期Half收敛或14GiB训练认证。本节替代下文旧分类整批packet及相应稠密工作区容量描述。
+连续空间标签现在直接复用contiguous视图，减少副本并保留原标签version；S46补齐4D复制标签与空间NLL输入的原始版本保护，其他维度保留CPU复制语义。保留卷积窗口/fold、索引/Embedding、排序与selection的浮点元数据及packet界限；每行softmax<=65536、1536张图和单buffer存储不变。许多宽类别行、不同形状或不对齐偏移仍可能触及缓存。没有新增BCE/KL/CTC家族、长期Half收敛或14GiB训练认证。本节替代下文旧分类整批packet及相应稠密工作区容量描述。
 
 ## S30 历史容量与图复用契约（当前以S32为准）
 
