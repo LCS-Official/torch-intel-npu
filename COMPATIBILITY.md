@@ -84,6 +84,13 @@
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
 | S48 | [量化前缀与输出校准](npunlock-probe/research/w8_output_quality.py)及[文本评测](npunlock-probe/research/w8_output_language.py) | 8种候选、独立CPU/NPU前向/KV/PPL/生成；候选未稳定改善不采用，见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md) |
 | S49 | [设备数值诊断与内筛](npunlock-probe/research/w8_device_quality.py) | 五层同输入down链、九配置/FP16的真实NPU内筛、冻结选择后独立前向/KV；结果及边界见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md) |
+| S50 | [门控拆分](npunlock-probe/research/w8_gate_quality.py)及[原型](npunlock-probe/research/w8_gate_experiment.py) | forward/decode的gate/up/SiLU同输入隔离及SHAVE激活内部对照；局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md) |
+
+## S50 gate/up/SiLU拆分与严格激活原型
+
+在内部两条轨迹、五层、forward与第64步decode上分离gate/up投影、SiLU及乘法，共20个同输入取样。gate/up传播与SiLU局部差异量级相近，乘法更小；导出图/普通FFN/融合层及down控制尾段均在取样中逐项相等。不能将全部门控差异归因于SiLU或直接认定驱动错误。
+
+已有SHAVE FP32 SiLU及设备乘法原型使20处局部FFN误差均下降；内部通过243→246/290，但最大KL0.0040497→0.0041673，未满足预设不劣化规则（两者仍低于原0.02门槛）。预热提交30→660，不采用为默认。4个正式进程7,130次提交正常关闭，281项本地离线检查通过；未新增生产代码、SHAVE内核、依赖或原生构建。候选未晋级，本轮未做独立/PPL/生成认证。方法与边界见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md)。
 
 ## S49 设备数值诊断与NPU内部筛选
 
