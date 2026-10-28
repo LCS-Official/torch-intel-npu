@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-28，v0.2.0 Experimental Preview（纳入截至S45的累计改进）。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S51为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -85,6 +85,15 @@
 | S48 | [量化前缀与输出校准](npunlock-probe/research/w8_output_quality.py)及[文本评测](npunlock-probe/research/w8_output_language.py) | 8种候选、独立CPU/NPU前向/KV/PPL/生成；候选未稳定改善不采用，见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md) |
 | S49 | [设备数值诊断与内筛](npunlock-probe/research/w8_device_quality.py) | 五层同输入down链、九配置/FP16的真实NPU内筛、冻结选择后独立前向/KV；结果及边界见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md) |
 | S50 | [门控拆分](npunlock-probe/research/w8_gate_quality.py)及[原型](npunlock-probe/research/w8_gate_experiment.py) | forward/decode的gate/up/SiLU同输入隔离及SHAVE激活内部对照；局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md) |
+| S51 | [scale联合校准](npunlock-probe/research/w8_scale_quality.py)及[共享输入诊断](npunlock-probe/research/w8_scale_audit.py) | 固定INT8 codes／rank32，局部SSE下降但整网未晋级；输入敏感峰值及候选拒绝处理见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md) |
+
+## S51 W8 scale校准与输入敏感精度边界
+
+固定INT8 codes与rank32，两个方案仅改gate/up或全部FFN的scale／补偿；90个投影校准SSE合计下降0.889%，但真实NPU内部通过243→242/290，全FFN方案在第30层被原局部门槛拒绝。两次拟合参数逐字节相同，内部结果和拒绝点复现。选择器现能排除已知的局部拒绝，未知错误与不健康设备仍中止研究。
+
+三个末层共享同一实际候选前缀时，最坏坐标均为actual=-5.9375、reference=-5.5625；有符号边界重放将此处-0.375差值定位到attention残差经FFN的传播。单独FFN同输入scaled max约0.003527，整层约0.01354；SHAVE SiLU没有消除峰值。本例没有认定具体内核错误或放宽原门槛，下一步仍需区分attention内部阶段。
+
+8个正式NPU进程共1,839次提交，全部健康关闭，其中2个按原精度门槛拒绝候选；293项本地离线检查通过。120组图结构／常量区控制与228份fixture身份通过，无生产后端、内核、依赖或原生构建变化；本轮未进行独立/PPL/生成认证，未新增INT4/NF4。详见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md)。
 
 ## S50 gate/up/SiLU拆分与严格激活原型
 
