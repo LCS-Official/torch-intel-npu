@@ -32,6 +32,8 @@
 
 **v0.2.0之后的S53研究：**[真实NPU Q/K/V校准](npunlock-probe/research/results/w8-qkv-quality/REPORT.md)仅拟合现有rank32输出因子，保留INT8编码／scale、输入基及30次预热提交。0.50强度的内部平均logits L2由2.041913%降至2.016721%，但通过243→241/290；三个固定强度均未通过原晋级规则。默认保留基线，后续应转向整网logits目标，而非继续以局部投影SSE下降判断质量。
 
+**v0.2.0之后的S54研究：**[整网logits／KL拟合](npunlock-probe/research/results/w8-logits-quality/REPORT.md)仅更新现有Q/K/V rank32输出因子，CPU准备、NPU验收。冻结的第二轮候选使内部通过243→244/290，八条新提示通过246→248/262；但最大KL升高，新样本最大L2也升高，未通过原晋级规则，保留默认基线。
+
 S31优化[损失函数与算子容量](npunlock-probe/research/results/operator-capacity/REPORT.md)：硬标签CE/NLL按完整类别行分块，多packet训练不再保存整批稠密mask；百万行NLL仅用43张缓存图，完整梯度与CPU一致。普通Conv2d输出、原生Transformer稠密工作区、Half掩码softmax和纯DMA拼接解除旧容量检查，实际覆盖范围及剩余边界见报告。复用原内核，无新增依赖或宿主构建；已纳入v0.2.0。
 
 S30改善[大Tensor与图缓存复用](npunlock-probe/research/results/memory-scale/REPORT.md)：单allocation扩至512MiB，页对齐子范围复用图、逐元素运算按元素数复用图，分块结果直接写回最终缓冲。通过超过旧256MiB的完整梯度对照、2050个偏移和1820种形状的缓存复用检查；1.34亿参数网络完成两步FP32 AdamW，状态2.00GiB、后端峰值2.25GiB，CPU参照范围见报告。仍保留1536图上限、各算子工作区与单buffer存储；约14GiB训练尚未实测认证。更新需重建session DLL和Torch PYD，无新增依赖或SHAVE ELF，已纳入v0.2.0。

@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S53为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S54为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -88,6 +88,15 @@
 | S51 | [scale联合校准](npunlock-probe/research/w8_scale_quality.py)及[共享输入诊断](npunlock-probe/research/w8_scale_audit.py) | 固定INT8 codes／rank32，局部SSE下降但整网未晋级；输入敏感峰值及候选拒绝处理见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md) |
 | S52 | [Attention分段诊断](npunlock-probe/research/w8_attention_quality.py)及[原型](npunlock-probe/research/w8_attention_experiment.py) | 26输出／213项精确分段控制；FP32 softmax局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md) |
 | S53 | [真实设备Q/K/V校准](npunlock-probe/research/w8_qkv_quality.py) | 固定rank32输出因子、32条校准／8条内部筛选；部分整网指标改善但未晋级，见[报告](npunlock-probe/research/results/w8-qkv-quality/REPORT.md) |
+| S54 | [整网logits／KL拟合](npunlock-probe/research/w8_logits_quality.py) | 两轮既有输出因子拟合、冻结后新提示NPU对照；通过数略增但最大误差退化，见[报告](npunlock-probe/research/results/w8-logits-quality/REPORT.md) |
+
+## S54 整网输出目标与新提示验证
+
+仅在CPU可微参考中拟合90个Q/K/V rank32输出因子，共921,600个master参数；前向逐次Half舍入，INT8编码／scale、输入基及其余权重固定。校准目标包含原FP16整网raw logits L2、teacher KL及高L2位置约束；初始高步长仅依据校准结果淘汰，最终两轮目标下降3.60%／8.77%，不当作NPU质量结论。
+
+内部NPU第二轮通过243→244/290，均值L2下降，但最大KL升高，原规则保留baseline；候选冻结后，新八条提示通过246→248/262、平均L2略降，最大L2和KL却升高，token一致数未变。新样本没有参与拟合或候选重排；只认证有限teacher-forced前向，不新增PPL／生成、KV或INT4/NF4范围。
+
+5个正式NPU进程共1,650次提交均健康结束，150项原局部检查、326项完整工作区离线检查通过；预热整网仍30次提交，无新增推理算子。228份fixture与9份旧身份未变，生产默认、内核及依赖不变。后续需要约束少数高误差位置并另备独立样本；复现与边界见[报告](npunlock-probe/research/results/w8-logits-quality/REPORT.md)。
 
 ## S53 真实NPU Q/K/V输出校准
 
