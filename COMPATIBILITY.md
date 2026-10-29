@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S51为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S52为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -86,6 +86,15 @@
 | S49 | [设备数值诊断与内筛](npunlock-probe/research/w8_device_quality.py) | 五层同输入down链、九配置/FP16的真实NPU内筛、冻结选择后独立前向/KV；结果及边界见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md) |
 | S50 | [门控拆分](npunlock-probe/research/w8_gate_quality.py)及[原型](npunlock-probe/research/w8_gate_experiment.py) | forward/decode的gate/up/SiLU同输入隔离及SHAVE激活内部对照；局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md) |
 | S51 | [scale联合校准](npunlock-probe/research/w8_scale_quality.py)及[共享输入诊断](npunlock-probe/research/w8_scale_audit.py) | 固定INT8 codes／rank32，局部SSE下降但整网未晋级；输入敏感峰值及候选拒绝处理见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md) |
+| S52 | [Attention分段诊断](npunlock-probe/research/w8_attention_quality.py)及[原型](npunlock-probe/research/w8_attention_experiment.py) | 26输出／213项精确分段控制；FP32 softmax局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md) |
+
+## S52 Attention分段诊断与FP32 softmax原型
+
+已知末层坐标在固定顺序有符号重放中，Q/K/V投影和softmax各贡献-0.1875，合计-0.375；该归因只针对一个坐标、相同W8参数参照且依赖替换顺序，不代表整网量化误差比例。真实NPU FP32 softmax将focus整层scaled max由0.013540070降至0.007103981；8个交叉设置L2均下降，但scaled max有2处上升。
+
+完整30层／8条内部轨迹的通过数243→242/290，平均L2略降而最大L2／KL升高；原晋级规则选择baseline。预热提交30→240，单次诊断计时不作为正式性能基准。4个正式NPU进程共9,073次提交均健康关闭，213项图／分段精确控制、305项完整工作区离线检查通过；228份fixture和旧运行组件指纹保持原值。
+
+生产默认、参数、内核及预算未改；未新增独立/PPL/生成、KV原型或INT4/NF4认证。后续优先使用真实NPU Q/K/V输出进行校准，并以原FP16整网质量为最终目标。复现与局部／整网参照边界见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md)。
 
 ## S51 W8 scale校准与输入敏感精度边界
 
