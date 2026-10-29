@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S54为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S55为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -89,6 +89,15 @@
 | S52 | [Attention分段诊断](npunlock-probe/research/w8_attention_quality.py)及[原型](npunlock-probe/research/w8_attention_experiment.py) | 26输出／213项精确分段控制；FP32 softmax局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md) |
 | S53 | [真实设备Q/K/V校准](npunlock-probe/research/w8_qkv_quality.py) | 固定rank32输出因子、32条校准／8条内部筛选；部分整网指标改善但未晋级，见[报告](npunlock-probe/research/results/w8-qkv-quality/REPORT.md) |
 | S54 | [整网logits／KL拟合](npunlock-probe/research/w8_logits_quality.py) | 两轮既有输出因子拟合、冻结后新提示NPU对照；通过数略增但最大误差退化，见[报告](npunlock-probe/research/results/w8-logits-quality/REPORT.md) |
+| S55 | [高误差整批校准](npunlock-probe/research/w8_tail_quality.py)及[CPU对照](npunlock-probe/research/w8_tail_audit.py) | 校准改善但三组NPU未晋级；新增高KL反例、CPU／NPU分歧与精度拒绝记录，见[报告](npunlock-probe/research/results/w8-tail-quality/REPORT.md) |
+
+## S55 高误差约束与校准泛化
+
+使用48条校准提示，固定INT8编码／scale和rank32输入基；最终拟合全部210个既有输出矩阵（4,976,640参数），保持Half前向。目标增加top10% L2／KL及逐位置baseline超额惩罚；整批梯度、实际校准分数回溯使两次目标下降1.64%／9.26%，不作为NPU收益证明。
+
+tail-e1在末层scaled max=0.010120984触发原0.01守卫，未继续给出整网质量；tail-e2完整执行但内部仍243/290、最大KL升高，原规则保留baseline。冻结后S54回归246→245/262，新八条提示245→242/266。新提示shadow/62的量化CPU／NPU基线KL约0.034，均越过0.02，且不位于生成EOS后段；存在模型／校准泛化缺口，不能只归因驱动。
+
+7个正式NPU进程共2,070次提交，6个完整完成、1个按原精度规则拒绝，7个均健康关闭；210项局部检查中209通过。340项完整工作区离线检查、另6组CPU整网审计完成，228份fixture及7份旧身份未变。推理仍30次预热提交，无生产后端／内核／依赖变化；未扩展INT4/NF4、KV、PPL／生成或长训练范围。详见[报告](npunlock-probe/research/results/w8-tail-quality/REPORT.md)。
 
 ## S54 整网输出目标与新提示验证
 
