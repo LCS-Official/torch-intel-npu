@@ -2,6 +2,8 @@
 
 v0.2.0 Experimental Preview：从v0.1.0升级请按下文build_npu.ps1重新构建宿主组件；不要只复制新Python文件后继续使用旧DLL/PYD。以下Sxx是阶段性更新记录，完整版本应以本版源码及兼容性矩阵为准。
 
+v0.2.0之后的S46开发更新仅需同步torch_intel_npu.py和torch_npu_autograd.py并重启Python，现有v0.2宿主组件和SHAVE内核可继续使用，不新增依赖或原生接口。分类损失布局复制后的原始Tensor版本检查范围及复现见[S46报告](npunlock-probe/research/results/loss-source-versions/REPORT.md)。已发布v0.2.0 tag保持原内容。
+
 本地S45需同步torch_intel_npu.py、torch_npu_smollm.py和torch_npu_graph_cache.py后重启Python。最终改动只涉及Python缓存管理，无新增依赖或原生接口，不要求重建ELF/DLL/PYD；诊断用原生修改已撤回。默认预算仍512MiB，必要时可在下一次调用前用torch.intel_npu.set_graph_cache_budget(768*1024**2)增大，不能缩至已缓存字节数以下或在分组计划构建中修改。[缓存回避措施、代价及剩余根因](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)与[低位质量诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md)分别列明；不需要开启磁盘缓存才能使用图族保护。
 
 本地S44的可选W8残差修正需同步新增torch_npu_lowbit_correction.py和更新的torch_npu_smollm.py，再重启Python；不需要新增依赖或重建ELF/DLL/PYD。校准需已有可选模型依赖与本地SmolLM2 checkpoint，因子必须配合同次准备的W8权重，默认不启用。用法、完整复现、质量边界与FP16控制组缓存预算见[S44报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md)。

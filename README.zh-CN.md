@@ -20,6 +20,10 @@
 本版源码验收见 [发布验收](RELEASE_READINESS.md)，版本正文见 [RELEASE_NOTES.md](RELEASE_NOTES.md)。
 报告问题与贡献请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+**v0.2.0之后的S46开发更新：**[分类损失原始版本保护](npunlock-probe/research/results/loss-source-versions/REPORT.md)，补齐布局复制后原标签及NLL输入被修改时的反向检查，按实测CPU的不同维度复制语义处理。仅修改Python，无新增依赖或内核重建；已发布v0.2.0 tag保持原内容。
+
+**v0.2.0之后的S47研究诊断：**[W8逐层误差与FP16保护](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md)覆盖30层、210个投影及37种保护对照。内部最佳候选在独立NPU前向和KV检查出现退化，故不采用，也不放宽原质量门槛；报告保留跨层累积、投影及末端诊断和剩余边界。
+
 **v0.2.0之后的S48研究：**[量化前缀上的down／输出校准](npunlock-probe/research/results/w8-output-quality/REPORT.md)实现并评测8种候选，包括固定输入基的约束回归。内部最佳候选未带来稳定设备收益：KV通过数不变，NPU困惑度略升，故不替换默认方案或放宽质量门槛；报告保留CPU/NPU、KV、文本和生成对照。
 
 **v0.2.0之后的S49研究：**[设备数值诊断与NPU内筛](npunlock-probe/research/results/w8-device-quality/REPORT.md)使用真实中间输入核对down补偿链，八条内部轨迹实际在NPU评测。五层取样中补偿相加逐项相等，较大差异位于门控输入及主W8投影。硬件仍选中S48同一候选，独立质量不足以替换原方案；默认配置和质量门槛保持原值。
