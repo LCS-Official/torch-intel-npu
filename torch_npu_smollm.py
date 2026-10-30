@@ -1,4 +1,4 @@
-"""Frozen SmolLM2-135M layers: FP16/W8A16, causal, no CPU forward fallback.
+"""Frozen SmolLM2-135M layers: FP16/W8/INT4/NF4, causal, no CPU forward fallback.
 
 CPU weight loading and RoPE constants are explicit preparation. This imports
 neither Transformers nor OpenVINO; Transformers is only the demo reference.
@@ -25,6 +25,7 @@ from torch_npu_graph_cache import compile_fused_cached, prefill_cache_graph
 
 _PROJECTIONS=frozenset(('self_attn.q_proj.weight','self_attn.k_proj.weight','self_attn.v_proj.weight',
     'self_attn.o_proj.weight','mlp.gate_proj.weight','mlp.up_proj.weight','mlp.down_proj.weight'))
+_WEIGHT_FORMATS={'fp16':None,'w8a16':'int8','w4a16':'int4','nf4a16':'nf4'}
 
 
 def _projection_policy(mode,names):
@@ -72,7 +73,8 @@ class FrozenSmolLayer(torch.nn.Module):
 
     def __init__(self,config,weights,*,mode='w8a16',packed_weights=None,fp16_projections=(),corrections=None):
         super().__init__()
-        if mode not in ('fp16','w8a16'):raise ValueError('Requires fp16 or w8a16')
+        if mode not in _WEIGHT_FORMATS:raise ValueError('Requires fp16, w8a16, w4a16 or nf4a16')
+        weight_format=_WEIGHT_FORMATS[mode]
         self._fp16_projections=_projection_policy(mode,fp16_projections)
         required=dict(model_type='llama',hidden_size=576,intermediate_size=1536,num_attention_heads=9,
                       num_key_value_heads=3,hidden_act='silu',attention_bias=False,mlp_bias=False,
@@ -92,18 +94,20 @@ class FrozenSmolLayer(torch.nn.Module):
         self._corrections={} if corrections is None else dict(corrections)
         if set(weights)!=set(shapes):raise ValueError('Unexpected layer weight names')
         if packed_weights is not None:
-            if mode!='w8a16' or type(packed_weights) is not dict or set(packed_weights)!={name for name,shape in shapes.items() if len(shape)==2}:
-                raise ValueError('Prepared W8 weights require all seven projections in w8a16 mode')
+            if weight_format is None or type(packed_weights) is not dict or set(packed_weights)!={name for name,shape in shapes.items() if len(shape)==2}:
+                raise ValueError('Prepared weights require all seven projections in a matching lowbit mode')
             for name,q in packed_weights.items():
-                if not isinstance(q,PackedWeight) or q.shape!=shapes[name] or q.format!='int8' or q.group_size!=shapes[name][1]:
-                    raise ValueError('Prepared weights require matching per-row INT8 projections')
+                if (not isinstance(q,PackedWeight) or q.shape!=shapes[name] or q.format!=weight_format
+                    or (weight_format=='int8' and q.group_size!=shapes[name][1])):
+                    raise ValueError('Prepared weights require matching formats/shapes; W8 uses per-row scales')
         for name,shape in shapes.items():
             w=weights[name]
             if not isinstance(w,torch.Tensor) or w.device.type!='cpu' or w.dtype not in (torch.float16,torch.bfloat16,torch.float32):
                 raise ValueError('Preparation requires CPU FP16/BF16/FP32 weights')
             self._weights[name]=(_half_bytes(w.float(),shape),shape)
-            if mode=='w8a16' and len(shape)==2:
-                self._packed[name]=quantize_weight(w.float().half(),format='int8') if packed_weights is None else packed_weights[name]
+            if weight_format is not None and len(shape)==2:
+                self._packed[name]=(quantize_weight(w.float().half(),format=weight_format,
+                    group_size=None if weight_format=='int8' else 32) if packed_weights is None else packed_weights[name])
         # ponytail: fixed 64-position RoPE/cache; extend only with new bounded
         # attention, allocation and numerical checks. No arbitrary masks.
         frequency=1./(100000**(torch.arange(0,64,2).float()/64))
@@ -144,11 +148,15 @@ class FrozenSmolLayer(torch.nn.Module):
             or normalized.device.type!='cpu' or normalized.dtype!=torch.float16 or normalized.shape!=x.shape)):
             raise ValueError('CPU segment requires matching FP16 normalization')
         def linear(v,name):
-            if quantized and self.mode=='w8a16' and name not in self.fp16_projections:
-                q=self._packed[name];codes=np.frombuffer(q.data,dtype=np.int8).reshape(q.shape)
-                scales=np.frombuffer(q.scales,dtype=np.float16).astype(np.float64)
-                weight=torch.from_numpy(codes.astype(np.float64)*scales[:,None])
-                value=(v.double()@weight.t()).half()
+            if quantized and self.mode!='fp16' and name not in self.fp16_projections:
+                q=self._packed[name]
+                if q.format=='int8':
+                    codes=np.frombuffer(q.data,dtype=np.int8).reshape(q.shape)
+                    scales=np.frombuffer(q.scales,dtype=np.float16).astype(np.float64)
+                    weight=torch.from_numpy(codes.astype(np.float64)*scales[:,None])
+                    value=(v.double()@weight.t()).half()
+                else:
+                    value=F.linear(v.float(),torch.from_numpy(q.dequantize().copy()).float()).half()
                 if name in self._corrections:
                     a,b=self._corrections[name].tensors()
                     delta=F.linear(F.linear(v.float(),a.float()).half().float(),b.float()).half()
@@ -232,7 +240,11 @@ class FrozenSmolLayer(torch.nn.Module):
                 attrs={'name':name.replace('.','_')+'_protected_fp16'} if name in self.fp16_projections else {}
                 value=op('MatMul',v,s.constant(np.frombuffer(data,dtype=np.float16).reshape(wshape),**attrs),shape=(rows,wshape[0]),transpose_a=False,transpose_b=True)
             else:
-                graph,xml,_=weight_graph(self._packed[name],rows);mapped={graph.inputs[0]:v};prefix=name.replace('.','_')+'_'
+                # Driver 8.3 loses NF4 low-float metadata in the single-row
+                # weight-compression route. Pad only the projection, then trim;
+                # the public token, attention and KV shapes remain unchanged.
+                graph,xml,_=weight_graph(self._packed[name],rows,pad_batch=self.mode=='nf4a16' and rows==1)
+                mapped={graph.inputs[0]:v};prefix=name.replace('.','_')+'_'
                 for node in graph.nodes:
                     if node.op=='Parameter':continue
                     cloned=replace(node,inputs=tuple(mapped[t] for t in node.inputs),name=prefix+node.name if node.name else None)
@@ -559,11 +571,11 @@ class FrozenSmolStack(torch.nn.Module):
         if (type(start_layer) is not int or type(num_layers) is not int or type(total) is not int
             or start_layer<0 or num_layers<=0 or start_layer+num_layers>total):
             raise ValueError('Requires a nonempty contiguous checkpoint layer range')
-        if mode not in ('fp16','w8a16'):raise ValueError('Requires fp16 or w8a16')
-        if packed_weights is not None and (mode!='w8a16' or type(packed_weights) is not dict
+        if mode not in _WEIGHT_FORMATS:raise ValueError('Requires fp16, w8a16, w4a16 or nf4a16')
+        if packed_weights is not None and (mode=='fp16' or type(packed_weights) is not dict
             or any(type(i) is not int for i in packed_weights) or any(type(value) is not dict for value in packed_weights.values())
             or set(packed_weights)!=set(range(start_layer,start_layer+num_layers))):
-            raise ValueError('Prepared stack weights require a complete W8 map indexed by checkpoint layer')
+            raise ValueError('Prepared stack weights require a complete lowbit map indexed by checkpoint layer')
         if corrections is not None and (mode!='w8a16' or packed_weights is None or type(corrections) is not dict
             or any(type(i) is not int or type(v) is not dict for i,v in corrections.items())
             or set(corrections)!=set(range(start_layer,start_layer+num_layers))):

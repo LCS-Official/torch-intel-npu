@@ -43,6 +43,10 @@ The detailed guides and research reports linked from this overview are currently
 
 **Development study after v0.2.0 — S58:** [FP16 weight-decoding proxy pilot](npunlock-probe/research/results/w8-decode-proxy/REPORT.md) compares two fixed last-layer correction fits on actual NPU down inputs. Explicit decoding reduces main-projection relative L2 by 59.17% and baseline local-SSE prediction error from 22.18% to 0.60%, while elementwise agreement worsens. Both candidates remain at 243/290 internal passes; the frozen original-proxy candidate falls from 234 to 233/260 on new prompts. Defaults and quality gates remain unchanged.
 
+**Development closeout — S59:** [The last native-output calibration check](npunlock-probe/research/results/w8-native-down-check/REPORT.md) still gives 243/290 internal passes. This closes the isolated last-layer fitting branch; mainline work now targets usable model paths and compatibility.
+
+**Development feature — S60:** [INT4/NF4 decoder execution](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md) adds `mode="w4a16"` and `mode="nf4a16"` to `FrozenSmolLayer`/`FrozenSmolStack`. Packed group-32 weights feed FP16 DPU computation through the complete 30-layer forward and bounded KV paths. Local execution checks and original-model quality checks are reported separately: these simple quantizers do not meet the whole-model quality gates. NF4 single-token projections use internal padding to avoid a driver 8.3 compilation failure; its warm full-stack check needs an explicit 1 GiB graph-cache budget. No new dependencies or native rebuilds.
+
 S31 improves [loss and operator capacity](npunlock-probe/research/results/operator-capacity/REPORT.md): hard-label CE/NLL tile complete class rows, and multi-packet training recomputes bounded masks instead of retaining a batch-wide dense mask. A million-row NLL uses 43 cached graphs and matches the complete CPU gradient. Ordinary Conv2d outputs, native Transformer dense workspaces, Half masked softmax and multi-output DMA concatenation use current storage checks; the report separates measured cases from implementation limits. Existing kernels are reused without new dependencies or host builds. Included in v0.2.0.
 
 S30 improves [large tensors and graph reuse](npunlock-probe/research/results/memory-scale/REPORT.md): allocations up to 512 MiB, page-aligned range bindings, element-count-based pointwise graph keys, and streamed writes into final buffers. Hardware checks cover complete gradients beyond the old 256 MiB limit, 2,050 offsets, and 1,820 logical shapes. A 134.25M-parameter network completes two FP32 AdamW steps with 2.00 GiB of model states and a 2.25 GiB backend allocation peak; the report distinguishes full CPU references from sampled update checks. The 1,536-graph limit, operator workspaces and single-buffer storage remain. Training near 14 GiB has not been certified. Rebuild the session DLL and Torch PYD; no new dependencies or SHAVE ELF files. Included in v0.2.0.
@@ -292,7 +296,7 @@ tokenization is supplied separately. This interface is included in v0.2.0.
 | Operators and training | Add/subtract/multiply/divide, selected unary operations and reductions, matrix multiplication, Linear, Conv2d, BatchNorm, ReLU, pooling and MSE; local bounded LayerNorm/GELU, softmax, bmm, higher-rank matmul, SDPA, clone layout gradients, log_softmax/NLL/CrossEntropy and AdamW; first-order autograd for limited parameter combinations |
 | True FP32 | FP32 arithmetic, compensated reductions, and matrix multiplication on SHAVE; this path is not replaced with FP16/TF32, but GEMM performance remains limited |
 | FP16 model inference | The complete 30-layer decoder of SmolLM2-135M-Instruct, prefill, KV cache, and decode; decoder/KV run on the NPU, while embedding, final norm, lm_head, and sampling run on the CPU |
-| Low-bit inference | Explicit `QuantizedLinear` experiments with INT8, INT4, NF4 weights and grouping; W8A16/W8A8 graph paths. INT4/NF4 support does not imply native 4-bit multiply-add or general low-bit device tensors |
+| Low-bit inference | Explicit INT8/INT4/NF4 `QuantizedLinear`; experimental SmolLM2-135M `w4a16`/`nf4a16` decoder forward and KV. Packed weights are decoded for FP16 DPU computation; whole-model four-bit quality and general low-bit tensors/training remain incomplete |
 | Runtime optimizations | Graph fusion, native session reuse, chained submission, buffer reuse, and optional disk graph caching; early FP16/W8/mixed prefill hits and local lightweight CPU endpoints |
 | Installation baseline | Source-built host components, offline tests and real-NPU operation/training/model checks; see [release validation](RELEASE_READINESS.md) for version-specific coverage |
 
@@ -308,7 +312,7 @@ Stage reports below retain their original experimental conditions; the current c
 - The SmolLM adapter has a fixed 64-position KV capacity and a maximum batch size of 8, subject to shape/workspace constraints. It does not directly support arbitrary Hugging Face models or long contexts.
 - Deep FP16 training retains numerical limits. AMP includes the standard torch.amp.GradScaler("intel_npu") entry point for tested configurations with FP32 master parameters; second-order gradients, differentiable CPU/NPU transfers, broad optimizer coverage, arbitrary differentiable in-place operations, and overlapping destination writes remain incomplete.
 - Common INT8/UINT8/INT16/INT32/INT64 arithmetic and conversions are implemented. BF16 currently covers storage, conversion, and selected operations using FP32 intermediates. Complete dtype/operator coverage, the full RNG/sampling API, asynchronous streams, and GPU+NPU cooperation remain incomplete. Unsupported operations raise errors.
-- Full-model W8 calibration has not passed every existing quality threshold. INT4/NF4 remain primarily Linear/small-network experiments; full low-bit LLM adaptation is not established. Current model evaluations explicitly prioritize FP16.
+- W8 calibration has not passed every existing whole-model quality threshold. INT4/NF4 now execute the explicitly adapted 30-layer decoder and bounded KV, but simple four-bit quantization fails the quality gates. Use FP16 when reference-model quality is required.
 - Shared physical memory across CPU/GPU/NPU does not imply zero transfers or zero synchronization. It does not eliminate driver-internal DMA or precision/layout conversions.
 
 The [full-model low-bit quality study](npunlock-probe/research/results/w8-sequential-calibration/REPORT.md)
@@ -456,9 +460,9 @@ These directions are ordered by current evidence. They are not implemented featu
 
 | Priority | Direction | Next steps and validation |
 |---|---|---|
+| Near term | Model coverage and compatibility | Use real forward/KV and original-model quality checks for each format; expand missing model interfaces. Pause isolated projection fitting unless it improves end-to-end quality |
 | Near term | Broader release validation | Source-build and hardware checks are in [release validation](RELEASE_READINESS.md); add long-running stress regressions and installation validation on another clean Windows machine |
 | Near term | First-token and runtime overhead | Profile repeated ELF/DPU parsing on cache hits, library imports, and repeated model preparation; preserve validation and use alternating A/B runs with output checks |
-| Near term | Model coverage and quality | Expand prompt, batch, KV-boundary, and numerical tests before extending contexts/models; W8/INT4/NF4 must each pass quality thresholds |
 | Medium term | Real-model hotspots | Remeasure RMSNorm/SHAVE instruction and register overhead, improve buffer reuse at larger batches, and verify each change's end-to-end benefit |
 | Medium term | General operators and training | Add dispatch and gradients for operators missing from real models, improve general FP32 GEMM, and expand S17 AMP model/optimizer checks while retaining numerical boundaries |
 | Long term | GPU+NPU cooperation and distribution | Investigate layer/pipeline scheduling and memory/synchronization costs before automatic graph partitioning; improve packaging and broaden device/driver validation |
@@ -482,7 +486,7 @@ For example, the [four-row SIMD reduction candidate](npunlock-probe/research/res
 | [TORCH_NPU_README.md](TORCH_NPU_README.md) | Detailed historical progress; old paths/experiment links may no longer work |
 | [SOURCE_RELEASE_REPORT.md](SOURCE_RELEASE_REPORT.md) | Source-only packaging, provenance, snapshot validation, and export boundaries |
 
-The source snapshot is about 15.5 MiB, with per-file sizes and SHA-256 records in `SOURCE_MANIFEST.json`.
+The source snapshot is about 16.0 MiB, with per-file sizes and SHA-256 records in `SOURCE_MANIFEST.json`.
 Models, environments, SDKs/toolchains, host binaries, and driver-generated `.blob` files are excluded; full fixture regressions need separately prepared graph data.
 Historical raw arrays, graph caches, and timing JSON were removed under the storage policy. Reports retain measurement summaries; rerunning experiments requires regenerating inputs/outputs.
 

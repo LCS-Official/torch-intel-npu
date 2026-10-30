@@ -237,7 +237,9 @@ class FrozenTransformer(torch.nn.Module):
         # These modes prove INT8 matrix operands, not a mapping of every IR op.
         integer=[m for m in matrices if m['wmode'] in (1,2)]
         if not matrices:raise ValueError('Missing DPU matrix tasks')
-        if self.mode!='fp16' and not integer:raise ValueError('Missing INT8 weight DPU tasks')
+        if self.mode in ('w8a16','mixed_int8') and not integer:raise ValueError('Missing INT8 weight DPU tasks')
+        if self.mode in ('w4a16','nf4a16') and not any(m['amode']==0 and m['wmode']==0 for m in matrices):
+            raise ValueError('Missing FP16 DPU matrix tasks for decompressed four-bit weights')
         if self.mode=='mixed_int8' and (not any(m['amode'] in (1,2) for m in integer)
             or not any(m['amode']==0 for m in integer)):
             raise ValueError(f'Missing mixed W8A8/W8A16 matrix operand proof: {modes}')

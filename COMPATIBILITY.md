@@ -93,6 +93,22 @@
 | S56 | [真实NPU校准选择](npunlock-probe/research/w8_native_selection.py) | 六个固定混合与设备预算、冻结候选及独立诊断；校准改善但原晋级拒绝，新提示局部守卫待定位，见[报告](npunlock-probe/research/results/w8-native-selection/REPORT.md) |
 | S57 | [末层分段诊断](npunlock-probe/research/w8_final_layer_audit.py)及[down尾图对照](npunlock-probe/research/w8_final_layer_down.py) | 复现SiLU峰值和候选的解压权重舍入边界，CPU上传激活对照排除残余差异；局部反事实未推广为整网修复，见[报告](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md) |
 | S58 | [FP16解压代理试点](npunlock-probe/research/w8_decode_proxy.py) | 实际NPU down输入、两个固定单层拟合与新提示；局部误差预测更接近设备，整网仍未晋级，见[报告](npunlock-probe/research/results/w8-decode-proxy/REPORT.md) |
+| S59 | [native-main拟合收尾](npunlock-probe/research/w8_native_down_check.py) | 主代理逐项匹配仍未提升内部通过数，结束单层校准方向，见[报告](npunlock-probe/research/results/w8-native-down-check/REPORT.md) |
+| S60 | [INT4/NF4解码器验收](npunlock-probe/research/smollm_lowbit_coverage.py) | 显式30层前向与有限KV，区分本格式执行正确性和原模型质量，见[报告](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md) |
+
+## S60 INT4/NF4解码器入口与主线模型覆盖
+
+`FrozenSmolLayer`／`FrozenSmolStack.from_checkpoint`新增`w4a16`、`nf4a16`，默认group32；也可提供格式／形状匹配的完整`PackedWeight`字典。保持FP16输入、输出和KV，压缩常量在图内解压后进入FP16 DPU，并非原生INT4/NF4乘加或低位训练。原FP16/W8默认与参考保持，FP16保护和rank32修正仍只用于W8。
+
+NF4单行投影在图内补至32行后裁回，避开8.3编译器的`LowFpType or levels attribute should has value`失败；公开token、attention和KV形状不扩大。图检查按格式要求DPU证据，W8仍必须有INT8矩阵任务，四位解压路径必须有FP16矩阵任务。新增模式绕过仅适用于FP16/W8的磁盘快捷缓存，仍使用现有内存图缓存。
+
+本机B1/S64的30层teacher-forced前向，以及8-token prefill和第9个token decode分别认证；旧KV快照不变。局部参考明确使用实际四位权重的FP16解压值，沿用L2<0.003、scaled max<0.01；原模型质量仍以独立原权重teacher的raw logits L2<0.03、KL<0.02判断。两类检查不可互换，当前简单四位量化未达整网质量门槛。
+
+NF4默认512MiB缓存会发生LRU淘汰和热路径重编译；输出及90项局部检查通过，原记录中的缓存复用断言未通过。完整热路径验收用显式1GiB图预算，生产默认未改。不是吞吐／内存优势认证，尚未覆盖新模式的自由生成、PPL、grouped decode、其他batch／长度、通用Hugging Face迁移或训练。后续按真实模型缺口推进，不再无限追加单层校准分支。见[报告及用法](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)。
+
+## S59 单层校准方向收尾
+
+最后一次固定native-main末层down拟合使主代理与NPU输出逐项一致、局部SSE下降约4.96%，但三组内部仍243/290且新候选最大KL更差。原规则保留baseline，不做新提示晋级；结束这条单层拟合方向。4个进程2686次提交、120项局部检查及4项观测／绑定控制通过并健康关闭，无新生产默认；详见[报告](npunlock-probe/research/results/w8-native-down-check/REPORT.md)。
 
 ## S58 FP16解压拟合代理与末层down试点
 
@@ -536,7 +552,8 @@ S19额外验收了95参数分割网络和443参数标准两层Transformer的四�
 | `FrozenSmolLayer/Stack` | SmolLM2-135M-Instruct，FP16 / W8A16；显式 prefill/KV/decode；固定 64-position 容量，batch<=8，受工作区约束 | 不支持任意 LLM；不是 Transformers 模型 `.to("intel_npu")` 即可运行，也不是自动 torch.compile 后端 |
 | 本地 `FrozenSmolIO` | 显式CPU FP16 embedding、最终RMSNorm及共享输出矩阵；从BF16/FP16/FP32的canonical tied checkpoint准备权重快照，D576/eps1e-5 | CPU两端辅助入口，与S5有界NPU Embedding不同；不提供CPU fallback、训练或独立lm_head权重支持；尚未发布 |
 | 完整 30 层 FP16 | 历史固定短上下文测试通过，decoder/KV 在 NPU；两端和采样在 CPU | 不代表长上下文、任务质量、训练、功耗或多设备协同已认证 |
-| 完整模型 W8 | 有校准与执行路径，既有独立/连续质量检查未全部通过 | 当前不能作为通用默认精度；INT4/NF4 全模型也未认证 |
+| 完整模型 W8 | 有校准与执行路径，既有独立/连续质量检查未全部通过 | 当前不能作为通用默认精度；四位执行与质量边界见S60 |
+| 完整模型 INT4/NF4 | S60显式SmolLM2-135M 30层前向及8→9-token KV，本格式局部数值检查通过 | 原模型质量未通过；新模式尚无自由生成、PPL、grouped decode或任意模型认证 |
 | 本地实验 `fp16_projections` | 校准W8中显式保留Up/Down原始FP16，真实30层、batch1、64位置融合路径通过129/142个质量检查位置 | 默认关闭、尚未发布；质量仍有限，性能仅限下述实测，不代表AMP或任意保护组合的硬件认证 |
 
 低位与完整模型的详细证据分别见 [INT8](npunlock-probe/research/results/int8/REPORT.md)、

@@ -42,6 +42,10 @@
 
 **v0.2.0之后的S58研究：**[FP16解压代理试点](npunlock-probe/research/results/w8-decode-proxy/REPORT.md)用相同NPU实际输入成对拟合末层down。新代理主投影相对L2降低59.17%，基线局部SSE预测偏差22.18%→0.60%，但逐项一致率下降。两候选内部均243/290，内部择优的原代理候选在新提示234→233/260；原默认和门槛保持，整网质量未晋级。
 
+**S59方向收尾：**[最后一次真实NPU输出拟合](npunlock-probe/research/results/w8-native-down-check/REPORT.md)内部仍243/290，结束单层末层校准分支，主线转向实际模型入口与兼容性。
+
+**S60功能扩展：**[INT4/NF4整层与整网执行](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)为 `FrozenSmolLayer`／`FrozenSmolStack` 增加 `mode="w4a16"`／`mode="nf4a16"`。group32压缩权重经解压进入FP16 DPU计算，覆盖30层前向和有限KV；执行数值通过与原模型质量达标分别记录，简单量化仍未通过整网质量门槛。NF4单token投影内部补行避开驱动8.3编译失败，完整栈热路径检查使用显式1GiB图预算。无新增依赖或原生重建。
+
 S31优化[损失函数与算子容量](npunlock-probe/research/results/operator-capacity/REPORT.md)：硬标签CE/NLL按完整类别行分块，多packet训练不再保存整批稠密mask；百万行NLL仅用43张缓存图，完整梯度与CPU一致。普通Conv2d输出、原生Transformer稠密工作区、Half掩码softmax和纯DMA拼接解除旧容量检查，实际覆盖范围及剩余边界见报告。复用原内核，无新增依赖或宿主构建；已纳入v0.2.0。
 
 S30改善[大Tensor与图缓存复用](npunlock-probe/research/results/memory-scale/REPORT.md)：单allocation扩至512MiB，页对齐子范围复用图、逐元素运算按元素数复用图，分块结果直接写回最终缓冲。通过超过旧256MiB的完整梯度对照、2050个偏移和1820种形状的缓存复用检查；1.34亿参数网络完成两步FP32 AdamW，状态2.00GiB、后端峰值2.25GiB，CPU参照范围见报告。仍保留1536图上限、各算子工作区与单buffer存储；约14GiB训练尚未实测认证。更新需重建session DLL和Torch PYD，无新增依赖或SHAVE ELF，已纳入v0.2.0。
@@ -271,7 +275,7 @@ with torch.no_grad():
 | 算子与训练 | 加减乘除、部分一元运算/归约、矩乘、Linear、Conv2d、BatchNorm、ReLU、池化、MSE；本地新增有界LayerNorm/GELU、softmax、bmm、高维matmul、SDPA、clone布局梯度、log_softmax/NLL/CrossEntropy及AdamW；有限参数组合的一阶 autograd |
 | 真正 FP32 | SHAVE 上的 FP32 算术、补偿归约与矩乘；未用 FP16/TF32 替代这条计算路径，GEMM 性能仍有限 |
 | FP16 模型推理 | SmolLM2-135M-Instruct 的完整 30 层 decoder、prefill、KV cache、decode；decoder/KV 在 NPU，embedding、最终 norm、lm_head、采样在 CPU |
-| 低位推理 | 显式 `QuantizedLinear` 的 INT8、INT4、NF4 权重与分组实验；W8A16 / W8A8 图路径。INT4/NF4 支持不等于原生 4-bit 乘加，也不等于通用低位 Tensor |
+| 低位推理 | 显式 INT8/INT4/NF4 `QuantizedLinear`；SmolLM2-135M实验性 `w4a16`／`nf4a16` 30层前向与KV。压缩权重解压后用FP16 DPU计算；四位整网质量、通用低位Tensor和训练仍未完整支持 |
 | 运行时优化 | 图融合、原生会话复用、链式提交、缓冲区复用、可选磁盘图缓存；FP16/W8/混合prefill提前命中；本地轻量CPU模型入口 |
 | 安装基线 | 宿主组件源码构建、离线测试及真实NPU运算/训练/模型检查；本版具体覆盖见[发布验收](RELEASE_READINESS.md) |
 
@@ -286,7 +290,7 @@ with torch.no_grad():
 - SmolLM 适配器固定 64-position KV 容量，batch 上限 8，仍受形状与工作区限制；不能直接运行任意 Hugging Face 模型或长上下文。
 - 纯FP16深层训练仍有数值限制；AMP已接通标准torch.amp.GradScaler("intel_npu")入口，限FP32主参数和已测配置；二阶梯度、跨CPU/NPU可微复制、广泛优化器、任意可微原地操作及重叠目的写入尚未覆盖。
 - INT8/UINT8/INT16/INT32/INT64常用算术及转换已接通；BF16目前限存储、转换及部分FP32中间计算的算子。完整dtype/算子覆盖、完整RNG/采样、异步多流和GPU+NPU协同仍缺；不支持的算子报错。
-- W8 完整模型校准尚未全部通过既有质量门槛；INT4/NF4 仍以 Linear/小网络实验为主，不能宣称完整低位 LLM 已适配。当前模型评估优先显式选择 FP16。
+- W8 整网校准尚未全部通过既有质量门槛；INT4/NF4 已能执行显式适配的30层decoder与有限KV，但简单四位量化未达到整网质量要求。需要参照模型质量时仍优先选择FP16。
 - CPU/GPU/NPU 共用物理内存不代表零搬运、零同步；统一内存不能消除驱动内部 DMA 和精度/布局转换。
 
 2026-10-15 的[完整模型低位质量研究](npunlock-probe/research/results/w8-sequential-calibration/REPORT.md)
@@ -419,9 +423,9 @@ W8A16 只有权重量化，不能把该项称为全 INT8 TOPS；W8A8 已检查�
 
 | 优先级 | 方向 | 下一步与验收依据 |
 |---|---|---|
+| 近期 | 模型覆盖与兼容性 | 各精度以真实前向／KV及原模型质量验收，按实际模型缺口补接口；没有端到端质量收益时暂停单投影拟合 |
 | 近期 | 扩大发布验证 | 本轮源码构建与真机回归见 [发布验收](RELEASE_READINESS.md)；补充长时间压力回归与另一台干净 Windows 安装验证 |
 | 近期 | 首 token 与运行时开销 | 剖析缓存命中的 ELF/DPU 重复解析、库导入与模型重复准备；保持同等校验，做交替 A/B 与输出一致性检查 |
-| 近期 | 模型覆盖与质量 | 扩展提示词、batch、KV 边界和数值测试；再扩展上下文与模型，W8/INT4/NF4 必须分别通过质量门槛 |
 | 中期 | 实际模型热点 | 重新测 RMSNorm/SHAVE 的指令与寄存器开销，处理大 batch 的缓冲区复用；逐项验证端到端收益 |
 | 中期 | 通用算子与训练 | 按实际模型缺失算子补齐派发与梯度，改善通用 FP32 GEMM；扩展S17的AMP模型/优化器验收并继续检查数值边界 |
 | 长期 | GPU+NPU 协同与分发 | 研究分层/流水线调度、内存和同步成本，再探索自动图分区；改善安装打包，扩大设备/驱动验证范围 |
