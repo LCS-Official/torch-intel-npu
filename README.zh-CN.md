@@ -40,6 +40,8 @@
 
 **v0.2.0之后的S57研究：**[末层精度诊断](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md)原样复现S56故障并定位固定坐标。SHAVE激活消除了基线局部拒绝，但旧候选仍失败；其down投影在该处与FP16解压权重参照一致，与精确code×scale参照差半精度一个ULP，上传CPU激活也复现。原默认和守卫不变，下一步让拟合代理显式模拟设备解压语义。
 
+**v0.2.0之后的S58研究：**[FP16解压代理试点](npunlock-probe/research/results/w8-decode-proxy/REPORT.md)用相同NPU实际输入成对拟合末层down。新代理主投影相对L2降低59.17%，基线局部SSE预测偏差22.18%→0.60%，但逐项一致率下降。两候选内部均243/290，内部择优的原代理候选在新提示234→233/260；原默认和门槛保持，整网质量未晋级。
+
 S31优化[损失函数与算子容量](npunlock-probe/research/results/operator-capacity/REPORT.md)：硬标签CE/NLL按完整类别行分块，多packet训练不再保存整批稠密mask；百万行NLL仅用43张缓存图，完整梯度与CPU一致。普通Conv2d输出、原生Transformer稠密工作区、Half掩码softmax和纯DMA拼接解除旧容量检查，实际覆盖范围及剩余边界见报告。复用原内核，无新增依赖或宿主构建；已纳入v0.2.0。
 
 S30改善[大Tensor与图缓存复用](npunlock-probe/research/results/memory-scale/REPORT.md)：单allocation扩至512MiB，页对齐子范围复用图、逐元素运算按元素数复用图，分块结果直接写回最终缓冲。通过超过旧256MiB的完整梯度对照、2050个偏移和1820种形状的缓存复用检查；1.34亿参数网络完成两步FP32 AdamW，状态2.00GiB、后端峰值2.25GiB，CPU参照范围见报告。仍保留1536图上限、各算子工作区与单buffer存储；约14GiB训练尚未实测认证。更新需重建session DLL和Torch PYD，无新增依赖或SHAVE ELF，已纳入v0.2.0。

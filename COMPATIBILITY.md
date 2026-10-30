@@ -1,6 +1,6 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-29，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S57为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-30，v0.2.0 Experimental Preview（纳入截至S45的累计改进）；S48–S58为本分支研究。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
@@ -92,6 +92,15 @@
 | S55 | [高误差整批校准](npunlock-probe/research/w8_tail_quality.py)及[CPU对照](npunlock-probe/research/w8_tail_audit.py) | 校准改善但三组NPU未晋级；新增高KL反例、CPU／NPU分歧与精度拒绝记录，见[报告](npunlock-probe/research/results/w8-tail-quality/REPORT.md) |
 | S56 | [真实NPU校准选择](npunlock-probe/research/w8_native_selection.py) | 六个固定混合与设备预算、冻结候选及独立诊断；校准改善但原晋级拒绝，新提示局部守卫待定位，见[报告](npunlock-probe/research/results/w8-native-selection/REPORT.md) |
 | S57 | [末层分段诊断](npunlock-probe/research/w8_final_layer_audit.py)及[down尾图对照](npunlock-probe/research/w8_final_layer_down.py) | 复现SiLU峰值和候选的解压权重舍入边界，CPU上传激活对照排除残余差异；局部反事实未推广为整网修复，见[报告](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md) |
+| S58 | [FP16解压代理试点](npunlock-probe/research/w8_decode_proxy.py) | 实际NPU down输入、两个固定单层拟合与新提示；局部误差预测更接近设备，整网仍未晋级，见[报告](npunlock-probe/research/results/w8-decode-proxy/REPORT.md) |
+
+## S58 FP16解压拟合代理与末层down试点
+
+在原48条校准轨迹的3072行真实NPU down输入上，对照精确code×scale与显式FP16解压代理。新代理主投影相对L2降低59.17%，基线局部SSE预测偏差22.18%→0.60%；但一致比例86.66%→56.22%，scaled max上升，不是DPU逐位模拟，不替换原独立参考。
+
+两种固定alpha=0.5的rank32输出因子拟合仅改变末层down的18,432个系数，其他209因子、所有输入基和packed权重不变。实际局部校准SSE下降4.9790%／4.9321%，内部均243/290且平均L2变差，新代理最大KL也升高；原规则保留baseline。内部择优的exact-a50在八条新提示234→233/260，decoded-a50本轮未做新提示NPU验收，不将该结果归为解压收益。
+
+6个正式进程3,346次提交及180项已执行局部检查通过；另一次重复记录字段错误在健康关闭后修复重跑，额外1,600次提交。七个实际进程均健康关闭，374项完整工作区离线检查通过，228份fixture及16份旧身份未变。无生产后端、内核、依赖、原生构建或精度门槛变化；INT4/NF4等整网质量范围未扩展。见[报告](npunlock-probe/research/results/w8-decode-proxy/REPORT.md)。
 
 ## S57 末层SiLU与权重解压舍入诊断
 
