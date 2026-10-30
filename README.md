@@ -9,8 +9,9 @@ Run PyTorch tensor operations, small-network training, and explicitly adapted mo
 Built on [npunlock](https://github.com/hsfzxjy/npunlock), this project provides an `intel_npu` device backend,
 custom SHAVE kernels, DPU graph execution for frozen models, and reuse of buffers, sessions, and compiled graphs.
 
-**Version: v0.2.0 Experimental Preview, dated 2026-10-27.**
-This update includes the compatibility, capacity, AMP, attention and model work through S45. Installation and hardware validation scope are recorded in [release validation](RELEASE_READINESS.md).
+**Version: v0.3.0-alpha.1 Experimental Preview, dated 2026-10-30.**
+This preview includes the S46 classification-loss fix, the S47–S59 numerical studies, and S60 experimental INT4/NF4 decoder execution. See [release notes](RELEASE_NOTES.md) and [release validation](RELEASE_READINESS.md).
+Four-bit execution passes the local numerical checks, while original-model quality remains 0/257 on the reported corpus; FP16 passes 257/257. No new calibration candidate is promoted.
 See [GitHub Releases](https://github.com/LCS-Official/torch-intel-npu/releases) for publication status.
 Offline source tests and real-NPU checks are reported separately from GitHub-hosted CI; see [release validation](RELEASE_READINESS.md) for the current results.
 The project currently targets NPU operator development and model adaptation research; compatibility remains limited compared with general-purpose CUDA/XPU backends.
@@ -20,6 +21,41 @@ The project currently targets NPU operator development and model adaptation rese
 Source-build and hardware validation are documented in [RELEASE_READINESS.md](RELEASE_READINESS.md),
 with version details in [RELEASE_NOTES.md](RELEASE_NOTES.md). See [CONTRIBUTING.md](CONTRIBUTING.md) to report issues or contribute.
 The detailed guides and research reports linked from this overview are currently primarily in Simplified Chinese.
+
+<details>
+<summary>Included development evidence: S46–S60</summary>
+
+**Development update after v0.2.0 — S46:** [classification-loss source-version guards](npunlock-probe/research/results/loss-source-versions/REPORT.md) preserve the tested CPU behavior when layout copies hide mutations of original labels or NLL inputs. This is a Python-only change with no new dependency or kernel rebuild; the published v0.2.0 tag is unchanged.
+
+**Development study after v0.2.0 — S47:** [layerwise W8 error diagnosis](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md) compares 30 single-block and seven projection FP16 rescues. The internal winner regresses on independent NPU forward and KV checks, so the existing experimental configuration and raw-logit quality gates remain unchanged. The report records cross-layer accumulation, all 210 projection checks, and the remaining quality limits.
+
+**Development study after v0.2.0 — S48:** [W8 calibration on quantized prefixes](npunlock-probe/research/results/w8-output-quality/REPORT.md) evaluates eight FFN-down/output-residual candidates, including a fixed-input-basis constraint. The best internal candidate does not give a stable NPU quality gain: KV passing positions stay unchanged and device perplexity increases slightly. Production defaults and quality gates remain unchanged; the report includes CPU/NPU forward, KV, text and generation checks.
+
+**Development study after v0.2.0 — S49:** [device numerical checks and internal selection](npunlock-probe/research/results/w8-device-quality/REPORT.md) isolate the FFN-down chain using actual NPU inputs and evaluate all existing candidates on eight internal trajectories. In five sampled layers the correction additions match, while larger differences occur at gated inputs and the main W8 projection. Device selection retains the S48 candidate, whose independent quality remains insufficient for promotion. Defaults and quality gates stay unchanged.
+
+**Development study after v0.2.0 — S50:** [gate/up/SiLU isolation](npunlock-probe/research/results/w8-gate-quality/REPORT.md) separates projection, activation and product errors on actual forward/decode inputs. A SHAVE activation prototype improves all 20 sampled local FFN comparisons, but its internal maximum KL worsens and warmed submissions rise from 30 to 660. It does not meet the predefined promotion rule; production defaults stay unchanged.
+
+**Development study after v0.2.0 — S51:** [bounded W8 scale/correction calibration](npunlock-probe/research/results/w8-scale-quality/REPORT.md) lowers calibration projection SSE by 0.889%, but internal NPU passes fall from 243 to 242/290. The full-FFN candidate is rejected by the existing local precision guard. A shared-prefix diagnostic traces one reproduced peak through the attention boundary; it does not establish a general root cause. Defaults stay unchanged.
+
+**Development study after v0.2.0 — S52:** [attention stage diagnosis](npunlock-probe/research/results/w8-attention-quality/REPORT.md) reproduces the known peak and tests QK, softmax and PV replacements on the NPU. FP32 softmax improves the sampled local L2 errors, but full-decoder internal passes fall from 243 to 242/290 and warmed submissions rise from 30 to 240. The prototype is not promoted; the next target is calibration using actual NPU Q/K/V outputs against the original FP16 model.
+
+**Development study after v0.2.0 — S53:** [device-observed Q/K/V calibration](npunlock-probe/research/results/w8-qkv-quality/REPORT.md) fits only the existing rank-32 output factors, retaining INT8 codes/scales, the input basis and 30 warmed submissions. The 0.50 blend lowers internal mean logits L2 from 2.041913% to 2.016721%, but passes fall from 243 to 241/290; all three fixed blends fail the original promotion rule. Defaults remain unchanged. Further work should target whole-model logits rather than local projection SSE.
+
+**Development study after v0.2.0 — S54:** [whole-model logits/KL fitting](npunlock-probe/research/results/w8-logits-quality/REPORT.md) updates only existing Q/K/V rank-32 output factors, using CPU preparation and real NPU evaluation. The frozen second-epoch candidate raises passes from 243 to 244/290 internally and from 246 to 248/262 on eight new prompts. Maximum KL rises, and new-prompt maximum L2 worsens, so it does not meet the original promotion rule. Defaults remain unchanged.
+
+**Development study after v0.2.0 — S55:** [upper-tail fitting and generalization audit](npunlock-probe/research/results/w8-tail-quality/REPORT.md) expands calibration to 48 prompts and updates all existing rank-32 output factors with full-gradient, score-checked steps. Calibration improves, but NPU internal passes stay at 243/290, the S54 regression falls from 246 to 245/262, and eight new prompts fall from 245 to 242/266. One earlier checkpoint is rejected by the unchanged local guard. Quantized CPU and NPU baselines both exceed the KL limit on a new prompt; defaults retain baseline.
+
+**Development study after v0.2.0 — S56:** [real-NPU calibration selection](npunlock-probe/research/results/w8-native-selection/REPORT.md) compares six fixed correction-update blends using actual decoder outputs before freezing the candidate. The native calibration objective improves by 8.60%, but internal passes stay at 243/290 and viewed regression passes fall from 491 to 487/528. Both baseline and candidate hit the original final-layer guard on the first new prompt, so new-set NPU quality remains unscored. Defaults retain baseline; independent quality is still unresolved.
+
+**Development study after v0.2.0 — S57:** [final-layer precision diagnosis](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md) reproduces the S56 failures at one fixed coordinate. SHAVE activation removes the baseline guard violation, while the old candidate still fails: its down projection matches the FP16-decoded-weight reference at that coordinate rather than the exact code-times-scale reference. CPU-uploaded activation controls reproduce the difference. Defaults and gates remain unchanged; the next fitting proxy should model native weight decoding explicitly.
+
+**Development study after v0.2.0 — S58:** [FP16 weight-decoding proxy pilot](npunlock-probe/research/results/w8-decode-proxy/REPORT.md) compares two fixed last-layer correction fits on actual NPU down inputs. Explicit decoding reduces main-projection relative L2 by 59.17% and baseline local-SSE prediction error from 22.18% to 0.60%, while elementwise agreement worsens. Both candidates remain at 243/290 internal passes; the frozen original-proxy candidate falls from 234 to 233/260 on new prompts. Defaults and quality gates remain unchanged.
+
+**Development closeout — S59:** [The last native-output calibration check](npunlock-probe/research/results/w8-native-down-check/REPORT.md) still gives 243/290 internal passes. This closes the isolated last-layer fitting branch; mainline work now targets usable model paths and compatibility.
+
+**Development feature — S60:** [INT4/NF4 decoder execution](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md) adds `mode="w4a16"` and `mode="nf4a16"` to `FrozenSmolLayer`/`FrozenSmolStack`. Packed group-32 weights feed FP16 DPU computation through the complete 30-layer forward and bounded KV paths. Local execution checks and original-model quality checks are reported separately: these simple quantizers do not meet the whole-model quality gates. NF4 single-token projections use internal padding to avoid a driver 8.3 compilation failure; its warm full-stack check needs an explicit 1 GiB graph-cache budget. No new dependencies or native rebuilds.
+
+</details>
 
 S31 improves [loss and operator capacity](npunlock-probe/research/results/operator-capacity/REPORT.md): hard-label CE/NLL tile complete class rows, and multi-packet training recomputes bounded masks instead of retaining a batch-wide dense mask. A million-row NLL uses 43 cached graphs and matches the complete CPU gradient. Ordinary Conv2d outputs, native Transformer dense workspaces, Half masked softmax and multi-output DMA concatenation use current storage checks; the report separates measured cases from implementation limits. Existing kernels are reused without new dependencies or host builds. Included in v0.2.0.
 
@@ -270,7 +306,7 @@ tokenization is supplied separately. This interface is included in v0.2.0.
 | Operators and training | Add/subtract/multiply/divide, selected unary operations and reductions, matrix multiplication, Linear, Conv2d, BatchNorm, ReLU, pooling and MSE; local bounded LayerNorm/GELU, softmax, bmm, higher-rank matmul, SDPA, clone layout gradients, log_softmax/NLL/CrossEntropy and AdamW; first-order autograd for limited parameter combinations |
 | True FP32 | FP32 arithmetic, compensated reductions, and matrix multiplication on SHAVE; this path is not replaced with FP16/TF32, but GEMM performance remains limited |
 | FP16 model inference | The complete 30-layer decoder of SmolLM2-135M-Instruct, prefill, KV cache, and decode; decoder/KV run on the NPU, while embedding, final norm, lm_head, and sampling run on the CPU |
-| Low-bit inference | Explicit `QuantizedLinear` experiments with INT8, INT4, NF4 weights and grouping; W8A16/W8A8 graph paths. INT4/NF4 support does not imply native 4-bit multiply-add or general low-bit device tensors |
+| Low-bit inference | Explicit INT8/INT4/NF4 `QuantizedLinear`; experimental SmolLM2-135M `w4a16`/`nf4a16` decoder forward and KV. Packed weights are decoded for FP16 DPU computation; whole-model four-bit quality and general low-bit tensors/training remain incomplete |
 | Runtime optimizations | Graph fusion, native session reuse, chained submission, buffer reuse, and optional disk graph caching; early FP16/W8/mixed prefill hits and local lightweight CPU endpoints |
 | Installation baseline | Source-built host components, offline tests and real-NPU operation/training/model checks; see [release validation](RELEASE_READINESS.md) for version-specific coverage |
 
@@ -286,7 +322,7 @@ Stage reports below retain their original experimental conditions; the current c
 - The SmolLM adapter has a fixed 64-position KV capacity and a maximum batch size of 8, subject to shape/workspace constraints. It does not directly support arbitrary Hugging Face models or long contexts.
 - Deep FP16 training retains numerical limits. AMP includes the standard torch.amp.GradScaler("intel_npu") entry point for tested configurations with FP32 master parameters; second-order gradients, differentiable CPU/NPU transfers, broad optimizer coverage, arbitrary differentiable in-place operations, and overlapping destination writes remain incomplete.
 - Common INT8/UINT8/INT16/INT32/INT64 arithmetic and conversions are implemented. BF16 currently covers storage, conversion, and selected operations using FP32 intermediates. Complete dtype/operator coverage, the full RNG/sampling API, asynchronous streams, and GPU+NPU cooperation remain incomplete. Unsupported operations raise errors.
-- Full-model W8 calibration has not passed every existing quality threshold. INT4/NF4 remain primarily Linear/small-network experiments; full low-bit LLM adaptation is not established. Current model evaluations explicitly prioritize FP16.
+- W8 calibration has not passed every existing whole-model quality threshold. INT4/NF4 now execute the explicitly adapted 30-layer decoder and bounded KV, but simple four-bit quantization fails the quality gates. Use FP16 when reference-model quality is required.
 - Shared physical memory across CPU/GPU/NPU does not imply zero transfers or zero synchronization. It does not eliminate driver-internal DMA or precision/layout conversions.
 
 The [full-model low-bit quality study](npunlock-probe/research/results/w8-sequential-calibration/REPORT.md)
@@ -434,9 +470,9 @@ These directions are ordered by current evidence. They are not implemented featu
 
 | Priority | Direction | Next steps and validation |
 |---|---|---|
+| Near term | Model coverage and compatibility | Use real forward/KV and original-model quality checks for each format; expand missing model interfaces. Pause isolated projection fitting unless it improves end-to-end quality |
 | Near term | Broader release validation | Source-build and hardware checks are in [release validation](RELEASE_READINESS.md); add long-running stress regressions and installation validation on another clean Windows machine |
 | Near term | First-token and runtime overhead | Profile repeated ELF/DPU parsing on cache hits, library imports, and repeated model preparation; preserve validation and use alternating A/B runs with output checks |
-| Near term | Model coverage and quality | Expand prompt, batch, KV-boundary, and numerical tests before extending contexts/models; W8/INT4/NF4 must each pass quality thresholds |
 | Medium term | Real-model hotspots | Remeasure RMSNorm/SHAVE instruction and register overhead, improve buffer reuse at larger batches, and verify each change's end-to-end benefit |
 | Medium term | General operators and training | Add dispatch and gradients for operators missing from real models, improve general FP32 GEMM, and expand S17 AMP model/optimizer checks while retaining numerical boundaries |
 | Long term | GPU+NPU cooperation and distribution | Investigate layer/pipeline scheduling and memory/synchronization costs before automatic graph partitioning; improve packaging and broaden device/driver validation |
@@ -460,7 +496,7 @@ For example, the [four-row SIMD reduction candidate](npunlock-probe/research/res
 | [TORCH_NPU_README.md](TORCH_NPU_README.md) | Detailed historical progress; old paths/experiment links may no longer work |
 | [SOURCE_RELEASE_REPORT.md](SOURCE_RELEASE_REPORT.md) | Source-only packaging, provenance, snapshot validation, and export boundaries |
 
-The source snapshot is about 15.5 MiB, with per-file sizes and SHA-256 records in `SOURCE_MANIFEST.json`.
+The source snapshot is about 16.0 MiB, with per-file sizes and SHA-256 records in `SOURCE_MANIFEST.json`.
 Models, environments, SDKs/toolchains, host binaries, and driver-generated `.blob` files are excluded; full fixture regressions need separately prepared graph data.
 Historical raw arrays, graph caches, and timing JSON were removed under the storage policy. Reports retain measurement summaries; rerunning experiments requires regenerating inputs/outputs.
 

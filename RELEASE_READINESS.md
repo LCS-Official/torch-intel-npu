@@ -1,92 +1,50 @@
-# v0.2.0 Experimental Preview 发布验收
+# v0.3.0-alpha.1 Experimental Preview 发布验收
 
-日期：2026-10-27。结果来自本机独立导出的源码目录；本版仍为实验预览，不是stable v1.0。
-源码范围与升级说明见[发布说明](RELEASE_NOTES.md)。v0.1.0的原验收记录保留在[历史tag](https://github.com/LCS-Official/torch-intel-npu/blob/v0.1.0/RELEASE_READINESS.md)。
+日期：2026-10-30。累计纳入v0.2.0之后的S46–S60，定位仍为alpha预览。当前版本、升级与限制见[发布说明](RELEASE_NOTES.md)。v0.2.0的源码构建与4,381次发布回归保留在[历史验收](https://github.com/LCS-Official/torch-intel-npu/blob/v0.2.0/RELEASE_READINESS.md)。
 
-## 环境与构建
+## 当前验收范围
 
-- Windows x64、Core Ultra 7 258V、Lunar Lake NPU4000 `8086:643e`，驱动32.0.100.5540、图编译器8.3。
-- Python3.12.14、Torch2.14.1+cpu、NumPy2.5.3；可选模型依赖safetensors0.8.0、Transformers5.18.0。
-- MSVC14.44.35207、Windows SDK10.0.26100.0、CMake4.4.4、Ninja1.13.2。
-- 在独立导出的源码目录运行build_npu.ps1，重新构建完整npunlock DLL、worker、session API和Torch PYD，两个原生mock回归通过；没有复制开发目录的旧宿主二进制。
-- 复用已有Python环境和外部本地SmolLM2-135M-Instruct checkpoint，没有重复复制模型；本轮不等于第二台机器或全新Conda环境的安装验证。旧新环境验证见[INSTALLATION_REPORT.md](INSTALLATION_REPORT.md)。
+- 审查累计分支与v0.2.0的差异，纳入独立分类损失修复和全部研究分支；保留提交历史。
+- 核对四个生产Python模块与已测开发源码一致；C/C++、原生构建脚本、requirements及SHAVE内核没有变化。
+- 230份NPU4000 fixture与v0.2.0相同；原FP16/W8的六份默认图指纹不变。
+- 从累计公开checkout导入后端，复用有哈希／Torch版本保护的匹配宿主组件；不把这次验收描述为重新源码构建或另一台机器验证。
 
-## 离线检查
+环境仍为Windows x64／Core Ultra 7 258V／NPU8086:643e／驱动32.0.100.5540／编译器8.3，Python3.12、Torch2.14.1+cpu、NumPy2.5.3。没有新依赖、模型下载或环境复制。
 
-| 模式 | unittest记录 | 通过 | 跳过 | 失败/错误 |
-|---|---:|---:|---:|---:|
-| 独立源码，包含可选模型依赖 | 243 | 242 | 1 | 0/0 |
-| 核心依赖模式 | 230 | 219 | 11 | 0/0 |
-| 开发目录对照旧公开源码，单独补验 | 1 | 1 | 0 | 0/0 |
-| 原生session失败与chain的mock夹具 | 2 | 2 | 0 | 0/0 |
+## 离线与实际NPU结果
 
-前两行均包含根目录自动发现、32项Python API检查及6项导出器检查。独立源码不含嵌套的旧source-release目录，因此旧版Smol图比较单项跳过；在覆盖发布checkout前已对照旧公开源码单独通过。该检查比较FP16/W8的默认序列化图和CPU参考，不是低位整网质量认证。
+| 检查 | 结果 |
+|---|---|
+| 累计公开源码自动发现 | 349项，348通过、1项既有条件跳过 |
+| Python API与导出器 | 32+6通过 |
+| 离线合计 | 387项检查，386通过、1跳过、0失败 |
+| 安装与FP16模型冒烟 | 77次NPU调用，严格FP32／FP16、Linear/Conv2d反向及SGD、单层KV通过 |
+| 分类损失source versions | FP16/FP32各122项，无CPU/NPU接受／拒绝差异；14,539+10,240次NPU调用 |
+| FP16/W8/INT4/NF4单层 | 各forward／prefill／decode，12项局部数值检查、44次NPU调用通过 |
+| 本轮NPU合计 | 7个进程、24,900次调用，全部通过并健康关闭 |
 
-核心依赖模式通过导入隔离主动屏蔽safetensors、Transformers、torchvision、OpenVINO，模拟这些可选包不可用；相应11项以明确原因跳过，没有伪装为通过，也没有重新创建精简Conda环境。测试全部从独立源码导入npunlock和项目模块。
+四种格式每个进程结束均检查context_failed=False和缓存／buffer归零；冒烟确认未导入OpenVINO。没有重新运行所有历史算子、14GiB训练、长时间压力、另一台硬件或低位整网校准；本轮不能替代这些认证。
 
-本轮另补充细粒度GitHub令牌导出拒绝测试、GCC/MSVC两种session来源记录解析测试，并让模型相关测试在可选依赖缺失时正确跳过。CI和贡献指南改用自动发现，避免后续新测试遗漏。
+## 整网质量与升级
 
-复现命令：
+完整30层结果沿用[S60明确协议](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)：257个EOS边界内位置，FP16 257/257，普通RTN W8 96/257，INT4/NF4均0/257。局部执行通过与原模型质量通过分开；没有新默认、宽松门槛或低位质量修复声明。
+
+NF4完整栈热路径验收显式使用1GiB图预算，生产默认仍512MiB。四位源常量压缩不等于进程／设备内存缩小或性能提升。当前仅承诺已测冻结SmolLM2入口；CUDA运行时、通用低位Tensor／训练、任意模型迁移、长上下文、稳定异步／分布式及GPU＋NPU协同仍有边界。
+
+从v0.2.0升级时同步完整源码并重启Python，匹配的宿主DLL/PYD和内核可复用；首次安装或v0.1.0升级仍按[安装说明](INSTALL.md)构建。此前tag与分支不改写。
+
+## 源包与云端检查
+
+发布清单覆盖源码、许可／来源、配套内核及Markdown报告，排除临时宿主副本、模型、环境、工具链、原始JSON／日志及驱动图。发布前严格校验SOURCE_MANIFEST.json，并检查实际Git归档的文件集和SHA；首次构建前可运行：
 
 ```powershell
+python -B tools/export_source_release.py --verify .
 $env:PYTHONPATH = "$PWD;$PWD\npunlock\python"
 python -B -m unittest discover -s . -p 'test_torch_npu*.py'
 python -B -m unittest discover -s npunlock/tests/python -p test_python_api.py
 python -B tools/test_source_release.py
 ```
 
-## 真实NPU发布回归
+GitHub累计PR、main及tag的最终CI状态以[Actions](https://github.com/LCS-Official/torch-intel-npu/actions)和发布页对应提交为准。tag工作流执行严格源包清单检查；云端只安装核心依赖，模型测试会按可选依赖明确跳过，不具有NPU设备。
 
-以下6个进程逐个运行，均使用独立源码构建的宿主组件。每个进程结束均检查context未失败、live buffers/缓存会话/标量缓冲/隔离字节归零；没有用CPU回退代替设备数值执行。
-
-| 检查 | 内容 | NPU调用 | 结果 |
-|---|---|---:|---|
-| 安装冒烟 | 严格FP32尾块、FP16矩乘、Linear/Conv2d前后向及SGD、本地checkpoint、单层FP16 prefill/decode及旧KV保留 | 77 | 通过；未导入OpenVINO |
-| 标准AMP＋AdamW | FP32主参数、AMSGrad/weight decay、溢出跳步及完整优化器状态对照CPU | 309 | 通过 |
-| 分块Attention FP32 | 多query/key tile前向和重算Q/K/V梯度对照 | 221 | 通过 |
-| NestedAttention FP16 | ragged SDPA、GQA/causal、native MHA权重、空子序列及CPU原有行为保留 | 529 | 通过 |
-| 软标签损失FP16 | 73组类别权重、reduction、label smoothing、空输入、部分view与梯度配置 | 2,585 | 通过 |
-| 30层FP16缓存重建 | 默认512MiB预算，两轮prefill/decode、64位置forward、再decode及输出重放 | 660 | 通过；216次图淘汰，结束健康 |
-| 合计 | 本轮发布回归，不包含以前阶段报告的调用数 | 4,381 | 全部通过 |
-
-30层测试每个检查点均确认缓存字节不超过预算、未额外保留被淘汰图；两次64位置forward以及旧KV再次decode的重放输出一致。该流程验证S45图族回收的回避措施，不能据此认定原生释放的根因已经修复。
-
-构建与真机复现示例（需准备本地模型）：
-
-```powershell
-.\build_npu.ps1 -Python python
-.\run_torch_npu.ps1 -Python python -Script tools/smoke_install.py -ScriptArguments @('--model','D:\models\SmolLM2-135M-Instruct')
-.\run_torch_npu.ps1 -Python python -Script torch_npu_amp_standard_demo.py -ScriptArguments @('--case','adamw')
-.\run_torch_npu.ps1 -Python python -Script torch_npu_flash_nested_demo.py -ScriptArguments @('--case','flash','--precision','float32')
-.\run_torch_npu.ps1 -Python python -Script torch_npu_flash_nested_demo.py -ScriptArguments @('--case','nested-attention','--precision','float16')
-.\run_torch_npu.ps1 -Python python -Script torch_npu_loss_extended_demo.py -ScriptArguments @('--case','soft','--precision','float16')
-.\run_torch_npu.ps1 -Python python -Script npunlock-probe/research/smollm_cache_lifetime.py -ScriptArguments @('--layers','30','--budget','512','--cycles','2','--label','release-check','--model','D:\models\SmolLM2-135M-Instruct')
-```
-
-## 来源与发布边界
-
-核对66份resident ELF、66份汇编及27份C源码的manifest哈希；核对MSVC记录的38份原生源/头文件、session DLL和Torch PYD指纹。此次源码构建的标识如下，构建产物不随源码发布：
-
-| 项目 | SHA-256 |
-|---|---|
-| backend.cpp | `9c3035281a9e1f6547c2d145a63cda495c0b2478ba2691e999d9548154970fba` |
-| MSVC session DLL | `ff0d1b7905d687912c8d629756b0f6efa5946aed9f4b4ca2e637af9e3fbb5788` |
-| Torch PYD | `d850158ee1081b4ccc5ed680c1a5ebe97949916f6ee3e7a026f01495eb509365` |
-
-最终源文件集与哈希以SOURCE_MANIFEST.json为准。包内保留代码、来源/许可、C/汇编/ELF及Markdown报告，不包含模型权重、环境、编译工具、宿主DLL/PYD、驱动生成图、计时JSON或原始数组。首次构建前可运行：
-
-```powershell
-python -B tools/export_source_release.py --verify .
-```
-
-构建与测试后的额外文件会使严格快照检查报告文件集变化，这是预期行为。此轮原始测试输出在形成报告后清理；历史研究audit需要重新生成对应数据。
-
-## 云端CI与剩余限制
-
-发布分支源码提交`178c9a8aff822706d00b5ae716253de8f485cd50`的[push CI](https://github.com/LCS-Official/torch-intel-npu/actions/runs/40454487337)和[PR CI](https://github.com/LCS-Official/torch-intel-npu/actions/runs/40454491418)均已实际运行并通过。两次均在Windows/Python3.12安装核心依赖，日志记录根目录192项、Python API32项、导出器6项，共219项通过、11项可选依赖跳过；云端没有NPU，不能代替上述真机检查。分支/PR按设计跳过严格发布manifest步骤，tag工作流才执行该检查。
-
-发布前读取的[旧CI run](https://github.com/LCS-Official/torch-intel-npu/actions/runs/38208763066)确实曾被账号账单限制阻止启动，但本轮两次成功运行未再遇到该阻止；这里仅报告CI执行事实，不推断账单状态。后续main/tag提交的实际状态见[Actions](https://github.com/LCS-Official/torch-intel-npu/actions)。
-
-本轮没有重跑所有历史大容量/长时间压力实验、全部算子配置或低位整网质量校准，也没有在另一台设备/驱动验证。S45保留的16个W8校正质量失败及INT4/NF4整网未认证，均不因此次发布变为已解决。
-
-仍不承诺通用CUDA运行时/PTX兼容、任意模型迁移、14GiB训练、稳定异步stream/event、分布式或GPU＋NPU协同。完整边界见[兼容性矩阵](COMPATIBILITY.md)及各阶段报告。
+详细审查、逐进程记录身份及清理结果见[本轮累计发布报告](npunlock-probe/research/results/release-v0-3-alpha-1/REPORT.md)。

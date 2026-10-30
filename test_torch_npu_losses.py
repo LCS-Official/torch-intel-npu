@@ -3,8 +3,10 @@ import ast
 from contextlib import nullcontext
 from math import prod
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 import torch
+from torch.autograd.function import once_differentiable
 from torch_npu_geometry import nll_row_tiles
 from npunlock.npu4000 import MAX_DMA_ELEMENTS
 
@@ -45,6 +47,13 @@ def environment():
                _concat=lambda xs,shape,dtype:torch.cat([v.reshape(-1) for v in xs]).reshape(shape))
     exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in names],
                             type_ignores=[]),'<losses>','exec'),env)
+    source=ast.parse(Path(__file__).with_name('torch_npu_autograd.py').read_text(encoding='utf-8'))
+    functions={'_fresh_output','_active','nll','nll_nd','nll2d_forward','_guard_loss_sources'}
+    scope=dict(torch=torch,npu=SimpleNamespace(**env),once_differentiable=once_differentiable)
+    exec(compile(ast.Module(body=[n for n in source.body if
+        isinstance(n,ast.FunctionDef) and n.name in functions or
+        isinstance(n,ast.ClassDef) and n.name in {'NLL','LossSourceGuard'}],type_ignores=[]),'<loss-autograd>','exec'),scope)
+    env['torch_npu_autograd']=SimpleNamespace(**scope)
     return env
 
 
@@ -89,6 +98,87 @@ class LossTests(unittest.TestCase):
         loss=env['_cross_entropy'](x,target)
         target.add_(1)
         with self.assertRaisesRegex(RuntimeError,'version|inplace'):loss.backward()
+
+    @staticmethod
+    def version_error(loss,owner):
+        with torch.no_grad():owner.add_(0)
+        try:loss.backward()
+        except RuntimeError as error:
+            if 'version' in str(error) or 'inplace' in str(error):return True
+            raise
+        return False
+
+    def test_strided_spatial_label_versions_follow_native_rank_policy(self):
+        env=environment();auto=env['torch_npu_autograd']
+        for shape in ((2,3,2),(2,3,2,2),(2,3,2,2,2)):
+            for kind in ('ce','smooth','nll','native2d'):
+                if kind=='native2d' and len(shape)!=4:continue
+                with self.subTest(shape=shape,kind=kind):
+                    size=(shape[0],shape[2]*2,*shape[3:])
+                    owner=torch.zeros(size,dtype=torch.int64);reference=owner.clone()
+                    target,labels=owner[:,::2],reference[:,::2]
+                    x=torch.randn(shape,requires_grad=True);y=x.detach().clone().requires_grad_()
+                    if kind in ('ce','smooth'):
+                        smoothing=.2 if kind=='smooth' else 0.
+                        actual=env['_cross_entropy'](x,target,label_smoothing=smoothing)
+                        expected=torch.nn.functional.cross_entropy(y,labels,label_smoothing=smoothing)
+                    elif kind=='nll':
+                        actual=auto.nll_nd(x,target);expected=torch.nn.functional.nll_loss(y,labels)
+                    else:
+                        actual=auto.nll2d_forward(x,target,None,1,-100)[0]
+                        expected=torch.ops.aten.nll_loss2d_forward(y,labels,None,1,-100)[0]
+                    torch.testing.assert_close(actual,expected)
+                    wanted=self.version_error(expected,reference)
+                    self.assertEqual(self.version_error(actual,owner),wanted)
+                    if not wanted:torch.testing.assert_close(x.grad,y.grad)
+
+    def test_spatial_nll_input_versions_follow_native_copy_policy(self):
+        auto=environment()['torch_npu_autograd']
+        for shape in ((2,3,2),(2,3,2,2),(2,3,2,2,2)):
+            for strided in (False,True):
+                with self.subTest(shape=shape,strided=strided):
+                    size=(*shape[:-1],shape[-1]*(2 if strided else 1))
+                    owner=torch.randn(size);reference=owner.clone()
+                    x=(owner[...,::2] if strided else owner).requires_grad_()
+                    y=(reference[...,::2] if strided else reference).requires_grad_()
+                    target=torch.zeros((shape[0],*shape[2:]),dtype=torch.int64)
+                    actual=auto.nll_nd(x,target);expected=torch.nn.functional.nll_loss(y,target)
+                    torch.testing.assert_close(actual,expected)
+                    wanted=self.version_error(expected,reference)
+                    self.assertEqual(self.version_error(actual,owner),wanted)
+                    if not wanted:torch.testing.assert_close(x.grad,y.grad)
+
+    def test_spatial_label_version_is_checked_again_after_retained_backward(self):
+        fn=environment()['_cross_entropy'];x=torch.randn(2,3,2,2,requires_grad=True)
+        owner=torch.zeros(2,4,2,dtype=torch.int64);loss=fn(x,owner[:,::2])
+        loss.backward(retain_graph=True)
+        self.assertTrue(self.version_error(loss,owner))
+        with torch.no_grad():
+            output=fn(x,owner[:,::2]);self.assertFalse(output.requires_grad)
+
+    def test_source_guards_preserve_all_reductions_and_gradients(self):
+        env=environment();auto=env['torch_npu_autograd']
+        for kind in ('ce','nll','native2d'):
+            for red in (0,1,2):
+                with self.subTest(kind=kind,reduction=red):
+                    x=torch.randn(2,3,2,2,requires_grad=True);y=x.detach().clone().requires_grad_()
+                    owner=torch.arange(16).reshape(2,2,4)%3;reference=owner.clone()
+                    target,labels=owner[...,::2],reference[...,::2];w=torch.tensor([.5,1.25,2.])
+                    if kind=='ce':
+                        actual=env['_cross_entropy'](x,target,w,red,-100,.2)
+                        expected=torch.nn.functional.cross_entropy(y,labels,weight=w,reduction=('none','mean','sum')[red],label_smoothing=.2)
+                    elif kind=='nll':
+                        actual=auto.nll_nd(x,target,w,red)
+                        expected=torch.nn.functional.nll_loss(y,labels,weight=w,reduction=('none','mean','sum')[red])
+                    else:
+                        actual=auto.nll2d_forward(x,target,w,red,-100)[0]
+                        expected=torch.ops.aten.nll_loss2d_forward(y,labels,w,red,-100)[0]
+                    torch.testing.assert_close(actual,expected)
+                    g=torch.randn_like(expected);actual.backward(g,retain_graph=True);expected.backward(g,retain_graph=True)
+                    torch.testing.assert_close(x.grad,y.grad)
+                    owner.add_(0);reference.add_(0)
+                    for loss in (actual,expected):
+                        with self.assertRaisesRegex(RuntimeError,'version|inplace'):loss.backward(g)
 
     def test_mse_forward_backward_native_oracle(self):
         env=environment()

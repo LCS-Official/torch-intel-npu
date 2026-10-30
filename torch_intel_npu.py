@@ -2511,7 +2511,7 @@ def _classification_input(x, target, weight, reduction, ignore_index, label_smoo
             raise ValueError('NPU label_smoothing must be in [0,1]')
     if x.ndim > 2:
         x = x.movedim(1, -1).clone(memory_format=torch.contiguous_format).view(-1, classes)
-        # shortcut: copied strided spatial labels still need source-version tracking.
+        # Public autograd wrappers preserve native source versions around these layout copies.
         target = target.contiguous().view(-1)
     return x, target
 
@@ -2558,11 +2558,13 @@ def _cross_entropy(x, target, weight=None, reduction=1, ignore_index=-100, label
         result=-terms.sum()
         return result/(x.numel()//classes) if reduction==1 else result
     shape = target.shape
+    source_x,source_target=x,target
     x, target = _classification_input(x, target, weight, reduction, ignore_index, label_smoothing)
     output = torch.log_softmax(x,-1) if x.numel() else x
     result,total=torch.ops.aten.nll_loss_forward(output,target,weight,reduction,ignore_index)
     result = _smooth_classification_loss(output, target, result, total, reduction, label_smoothing, ignore_index,weight)
-    return result.view(shape) if reduction == 0 else result
+    result=result.view(shape) if reduction==0 else result
+    return torch_npu_autograd._guard_loss_sources(result,source_x,source_target)
 
 
 def _nll_native_forward(x,target,weight,reduction,ignore_index,*,spatial=False,output=None,total_weight=None):

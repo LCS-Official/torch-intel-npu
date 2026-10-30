@@ -9,8 +9,9 @@
 项目基于 [npunlock](https://github.com/hsfzxjy/npunlock)，实现 `intel_npu` 设备后端、自定义 SHAVE 内核、
 冻结模型的 DPU 图执行，以及缓冲区、会话和编译图复用。
 
-**版本：v0.2.0 Experimental Preview，更新于 2026-10-27。**
-本版纳入截至S45的兼容性、容量、AMP、Attention及模型改进；安装与真机验证范围见[发布验收](RELEASE_READINESS.md)。
+**版本：v0.3.0-alpha.1 Experimental Preview，更新于 2026-10-30。**
+本预览纳入S46分类损失修复、S47–S59数值研究，以及S60实验性INT4/NF4解码器入口。见[发布说明](RELEASE_NOTES.md)与[发布验收](RELEASE_READINESS.md)。
+四位执行已通过本格式局部数值检查，但本轮原模型质量仍为0/257，FP16对照257/257；没有新的校准候选升级为默认。
 发布状态见 [GitHub Releases](https://github.com/LCS-Official/torch-intel-npu/releases)。
 离线检查、真实NPU验证与GitHub托管CI分别记录，不互相替代；本次结果见[发布验收](RELEASE_READINESS.md)。
 目前适合 NPU 算子与模型适配研究，尚未达到通用 CUDA/XPU 后端的兼容性。
@@ -19,6 +20,41 @@
 
 本版源码验收见 [发布验收](RELEASE_READINESS.md)，版本正文见 [RELEASE_NOTES.md](RELEASE_NOTES.md)。
 报告问题与贡献请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+<details>
+<summary>本预览纳入的开发证据：S46–S60</summary>
+
+**v0.2.0之后的S46开发更新：**[分类损失原始版本保护](npunlock-probe/research/results/loss-source-versions/REPORT.md)，补齐布局复制后原标签及NLL输入被修改时的反向检查，按实测CPU的不同维度复制语义处理。仅修改Python，无新增依赖或内核重建；已发布v0.2.0 tag保持原内容。
+
+**v0.2.0之后的S47研究诊断：**[W8逐层误差与FP16保护](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md)覆盖30层、210个投影及37种保护对照。内部最佳候选在独立NPU前向和KV检查出现退化，故不采用，也不放宽原质量门槛；报告保留跨层累积、投影及末端诊断和剩余边界。
+
+**v0.2.0之后的S48研究：**[量化前缀上的down／输出校准](npunlock-probe/research/results/w8-output-quality/REPORT.md)实现并评测8种候选，包括固定输入基的约束回归。内部最佳候选未带来稳定设备收益：KV通过数不变，NPU困惑度略升，故不替换默认方案或放宽质量门槛；报告保留CPU/NPU、KV、文本和生成对照。
+
+**v0.2.0之后的S49研究：**[设备数值诊断与NPU内筛](npunlock-probe/research/results/w8-device-quality/REPORT.md)使用真实中间输入核对down补偿链，八条内部轨迹实际在NPU评测。五层取样中补偿相加逐项相等，较大差异位于门控输入及主W8投影。硬件仍选中S48同一候选，独立质量不足以替换原方案；默认配置和质量门槛保持原值。
+
+**v0.2.0之后的S50研究：**[gate/up/SiLU拆分](npunlock-probe/research/results/w8-gate-quality/REPORT.md)在真实forward/decode输入上区分投影、激活和乘法差异。SHAVE激活原型使20处局部FFN更接近CPU参考，但整网内部最大KL略升，预热提交30→660，未通过预设晋级规则；生产默认保持原值。
+
+**v0.2.0之后的S51研究：**[受限W8 scale／低秩联合校准](npunlock-probe/research/results/w8-scale-quality/REPORT.md)使校准投影SSE下降0.889%，但内部NPU通过243→242/290；全FFN候选触发原局部精度门槛。共享前缀重放将一个可复现峰值定位到attention边界的传播，不能推广为整网统一原因。候选未晋级，默认保持原值。
+
+**v0.2.0之后的S52研究：**[Attention分段诊断](npunlock-probe/research/results/w8-attention-quality/REPORT.md)复现已知峰值，并在NPU上逐项验证QK、softmax和PV替换。FP32 softmax降低取样的局部L2，但整网内部通过243→242/290，预热提交30→240；原型未晋级。下一步针对真实NPU Q/K/V输出校准，以原FP16模型整网质量为目标。
+
+**v0.2.0之后的S53研究：**[真实NPU Q/K/V校准](npunlock-probe/research/results/w8-qkv-quality/REPORT.md)仅拟合现有rank32输出因子，保留INT8编码／scale、输入基及30次预热提交。0.50强度的内部平均logits L2由2.041913%降至2.016721%，但通过243→241/290；三个固定强度均未通过原晋级规则。默认保留基线，后续应转向整网logits目标，而非继续以局部投影SSE下降判断质量。
+
+**v0.2.0之后的S54研究：**[整网logits／KL拟合](npunlock-probe/research/results/w8-logits-quality/REPORT.md)仅更新现有Q/K/V rank32输出因子，CPU准备、NPU验收。冻结的第二轮候选使内部通过243→244/290，八条新提示通过246→248/262；但最大KL升高，新样本最大L2也升高，未通过原晋级规则，保留默认基线。
+
+**v0.2.0之后的S55研究：**[高误差约束与泛化审计](npunlock-probe/research/results/w8-tail-quality/REPORT.md)把校准扩至48条，更新全部既有rank32输出因子，并以整批梯度／校准分数回溯接受更新。校准改善未泛化：NPU内部仍243/290，S54回归246→245/262，新八条提示245→242/266；另一检查点被原局部守卫拒绝。新提示的量化CPU／NPU基线均有KL超限，默认保留基线。
+
+**v0.2.0之后的S56研究：**[真实NPU校准选择](npunlock-probe/research/results/w8-native-selection/REPORT.md)在原48条上比较六个固定更新幅度，再冻结候选。真机校准目标降低8.60%，但内部仍243/290、已查看回归491→487/528；新提示首条的基线和候选均触发原末层守卫，没有有效的新集NPU分数，默认保留基线。独立低位质量仍未解决。
+
+**v0.2.0之后的S57研究：**[末层精度诊断](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md)原样复现S56故障并定位固定坐标。SHAVE激活消除了基线局部拒绝，但旧候选仍失败；其down投影在该处与FP16解压权重参照一致，与精确code×scale参照差半精度一个ULP，上传CPU激活也复现。原默认和守卫不变，下一步让拟合代理显式模拟设备解压语义。
+
+**v0.2.0之后的S58研究：**[FP16解压代理试点](npunlock-probe/research/results/w8-decode-proxy/REPORT.md)用相同NPU实际输入成对拟合末层down。新代理主投影相对L2降低59.17%，基线局部SSE预测偏差22.18%→0.60%，但逐项一致率下降。两候选内部均243/290，内部择优的原代理候选在新提示234→233/260；原默认和门槛保持，整网质量未晋级。
+
+**S59方向收尾：**[最后一次真实NPU输出拟合](npunlock-probe/research/results/w8-native-down-check/REPORT.md)内部仍243/290，结束单层末层校准分支，主线转向实际模型入口与兼容性。
+
+**S60功能扩展：**[INT4/NF4整层与整网执行](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)为 `FrozenSmolLayer`／`FrozenSmolStack` 增加 `mode="w4a16"`／`mode="nf4a16"`。group32压缩权重经解压进入FP16 DPU计算，覆盖30层前向和有限KV；执行数值通过与原模型质量达标分别记录，简单量化仍未通过整网质量门槛。NF4单token投影内部补行避开驱动8.3编译失败，完整栈热路径检查使用显式1GiB图预算。无新增依赖或原生重建。
+
+</details>
 
 S31优化[损失函数与算子容量](npunlock-probe/research/results/operator-capacity/REPORT.md)：硬标签CE/NLL按完整类别行分块，多packet训练不再保存整批稠密mask；百万行NLL仅用43张缓存图，完整梯度与CPU一致。普通Conv2d输出、原生Transformer稠密工作区、Half掩码softmax和纯DMA拼接解除旧容量检查，实际覆盖范围及剩余边界见报告。复用原内核，无新增依赖或宿主构建；已纳入v0.2.0。
 
@@ -249,7 +285,7 @@ with torch.no_grad():
 | 算子与训练 | 加减乘除、部分一元运算/归约、矩乘、Linear、Conv2d、BatchNorm、ReLU、池化、MSE；本地新增有界LayerNorm/GELU、softmax、bmm、高维matmul、SDPA、clone布局梯度、log_softmax/NLL/CrossEntropy及AdamW；有限参数组合的一阶 autograd |
 | 真正 FP32 | SHAVE 上的 FP32 算术、补偿归约与矩乘；未用 FP16/TF32 替代这条计算路径，GEMM 性能仍有限 |
 | FP16 模型推理 | SmolLM2-135M-Instruct 的完整 30 层 decoder、prefill、KV cache、decode；decoder/KV 在 NPU，embedding、最终 norm、lm_head、采样在 CPU |
-| 低位推理 | 显式 `QuantizedLinear` 的 INT8、INT4、NF4 权重与分组实验；W8A16 / W8A8 图路径。INT4/NF4 支持不等于原生 4-bit 乘加，也不等于通用低位 Tensor |
+| 低位推理 | 显式 INT8/INT4/NF4 `QuantizedLinear`；SmolLM2-135M实验性 `w4a16`／`nf4a16` 30层前向与KV。压缩权重解压后用FP16 DPU计算；四位整网质量、通用低位Tensor和训练仍未完整支持 |
 | 运行时优化 | 图融合、原生会话复用、链式提交、缓冲区复用、可选磁盘图缓存；FP16/W8/混合prefill提前命中；本地轻量CPU模型入口 |
 | 安装基线 | 宿主组件源码构建、离线测试及真实NPU运算/训练/模型检查；本版具体覆盖见[发布验收](RELEASE_READINESS.md) |
 
@@ -264,7 +300,7 @@ with torch.no_grad():
 - SmolLM 适配器固定 64-position KV 容量，batch 上限 8，仍受形状与工作区限制；不能直接运行任意 Hugging Face 模型或长上下文。
 - 纯FP16深层训练仍有数值限制；AMP已接通标准torch.amp.GradScaler("intel_npu")入口，限FP32主参数和已测配置；二阶梯度、跨CPU/NPU可微复制、广泛优化器、任意可微原地操作及重叠目的写入尚未覆盖。
 - INT8/UINT8/INT16/INT32/INT64常用算术及转换已接通；BF16目前限存储、转换及部分FP32中间计算的算子。完整dtype/算子覆盖、完整RNG/采样、异步多流和GPU+NPU协同仍缺；不支持的算子报错。
-- W8 完整模型校准尚未全部通过既有质量门槛；INT4/NF4 仍以 Linear/小网络实验为主，不能宣称完整低位 LLM 已适配。当前模型评估优先显式选择 FP16。
+- W8 整网校准尚未全部通过既有质量门槛；INT4/NF4 已能执行显式适配的30层decoder与有限KV，但简单四位量化未达到整网质量要求。需要参照模型质量时仍优先选择FP16。
 - CPU/GPU/NPU 共用物理内存不代表零搬运、零同步；统一内存不能消除驱动内部 DMA 和精度/布局转换。
 
 2026-10-15 的[完整模型低位质量研究](npunlock-probe/research/results/w8-sequential-calibration/REPORT.md)
@@ -397,9 +433,9 @@ W8A16 只有权重量化，不能把该项称为全 INT8 TOPS；W8A8 已检查�
 
 | 优先级 | 方向 | 下一步与验收依据 |
 |---|---|---|
+| 近期 | 模型覆盖与兼容性 | 各精度以真实前向／KV及原模型质量验收，按实际模型缺口补接口；没有端到端质量收益时暂停单投影拟合 |
 | 近期 | 扩大发布验证 | 本轮源码构建与真机回归见 [发布验收](RELEASE_READINESS.md)；补充长时间压力回归与另一台干净 Windows 安装验证 |
 | 近期 | 首 token 与运行时开销 | 剖析缓存命中的 ELF/DPU 重复解析、库导入与模型重复准备；保持同等校验，做交替 A/B 与输出一致性检查 |
-| 近期 | 模型覆盖与质量 | 扩展提示词、batch、KV 边界和数值测试；再扩展上下文与模型，W8/INT4/NF4 必须分别通过质量门槛 |
 | 中期 | 实际模型热点 | 重新测 RMSNorm/SHAVE 的指令与寄存器开销，处理大 batch 的缓冲区复用；逐项验证端到端收益 |
 | 中期 | 通用算子与训练 | 按实际模型缺失算子补齐派发与梯度，改善通用 FP32 GEMM；扩展S17的AMP模型/优化器验收并继续检查数值边界 |
 | 长期 | GPU+NPU 协同与分发 | 研究分层/流水线调度、内存和同步成本，再探索自动图分区；改善安装打包，扩大设备/驱动验证范围 |

@@ -1,35 +1,52 @@
-# v0.2.0 Experimental Preview
+# v0.3.0-alpha.1 Experimental Preview
 
-This release brings the accumulated Intel NPU4000 backend work since v0.1.0 into one source release. It remains an experimental Windows/Lunar Lake backend, with explicit compatibility and numerical limits.
+This preview combines the development work since v0.2.0 into one mainline source snapshot. It adds a classification-loss correctness fix and explicit four-bit SmolLM2 decoder execution, together with the numerical studies and reports. It remains an experimental Windows/Lunar Lake backend.
 
 ## Changes
 
-- Broader PyTorch device compatibility: integer/Boolean arithmetic, indexing, reductions, sorting, losses, random sampling, standard modules and optimizers within the documented contracts.
-- Rank 0–64 storage and allocations up to 1 GiB, with dtype-aware limits and bounded operator workspaces. These are storage capabilities, not certification of arbitrary 14 GiB model training.
-- Standard `torch.amp.GradScaler("intel_npu")` integration for tested FP32-master-parameter training configurations.
-- Additional attention and model migration support, including bounded GQA/empty-dimension behavior, experimental blockwise attention and strided NestedTensor inference. Default attention remains the existing math path.
-- Complete 30-layer SmolLM2-135M frozen decoder inference on NPU, KV caching and startup/runtime improvements, plus optional calibrated W8/mixed-projection/low-rank experiments. Embeddings, final norm/head and sampling remain explicit CPU stages.
-- Residual-factor prefill cache identity now includes factor values and rank. Smol cache pressure retires the graph family together; unsafe grouped-plan retirement is rejected before execution. Default graph cache remains 1536 entries/512 MiB, with explicit byte-budget control.
-- Expanded source tests, automatic offline test discovery, release manifests and provenance. English is now the default README, with a Chinese overview and language-switching links. The previous English URL remains as a redirect page.
+- Classification-loss autograd now preserves the tested source-version behavior after layout copies. Mutating saved original labels or NLL inputs is rejected at backward where the validated CPU implementation rejects it. This does not provide general view-write or higher-order-gradient support.
+- `FrozenSmolLayer` and `FrozenSmolStack` accept `mode="w4a16"` and `mode="nf4a16"`, with group-32 weight preparation or matching explicit packed weights. FP16 activations, outputs and KV remain unchanged.
+- DPU evidence validation now follows the weight format. W8 still requires INT8 matrix evidence; four-bit decompression requires FP16 matrix evidence. NF4 single-row projections pad internally to 32 rows and trim to avoid a driver 8.3 compilation failure.
+- S47–S59 retain layerwise, attention, activation, weight-decoding and calibration diagnostics. None of the new calibration candidates is promoted. The repeated last-layer fitting branch is closed in favor of actual model coverage and compatibility.
+- The cumulative snapshot includes all previously separate development branches, refreshed source hashes, an English default README and Chinese language button. Reports remain; raw experiment arrays and logs are excluded.
+
+## Execution and quality are separate
+
+The 30-layer SmolLM2-135M decoder passes bounded forward, prefill and decode checks for each format. Packed four-bit weights are decoded for FP16 DPU computation; this is not native four-bit multiply-add or a general low-bit PyTorch Tensor backend.
+
+The same eight-prompt S60 corpus scores 257 EOS-bounded positions against the original-weight FP16 CPU model:
+
+| Mode | Original-model quality passes | Matching next token |
+|---|---:|---:|
+| FP16 | 257/257 | 257/257 |
+| Plain per-row RTN W8 | 96/257 | 247/257 |
+| Group-32 INT4 | 0/257 | 188/257 |
+| Group-32 NF4 | 0/257 | 214/257 |
+
+The gates remain raw-logit relative L2 < 0.03 and KL < 0.02. This W8 control has no optional calibrated factors and must not be compared directly with the older 142/290-position studies. Four-bit quality is not certified. Keep FP16 for reference-model quality.
+
+NF4's full-stack warm check uses an explicit 1 GiB graph-cache budget; 512 MiB causes LRU eviction and recompilation. The production default remains 512 MiB. Packed source constants are smaller, but the compiler may expand them; no process-memory, speed, energy or chip-peak utilization advantage is claimed.
 
 ## Validation and upgrade
 
-The supported reference platform is Windows x64, Core Ultra 7 258V, NPU4000 `8086:643e`, driver 32.0.100.5540, compiler 8.3, Python 3.12 and Torch 2.14.1+cpu. See [release validation](RELEASE_READINESS.md) for exact source-build, offline and real-NPU results, including skipped tests and CI status.
+The reference platform remains Windows x64, Core Ultra 7 258V, NPU4000 `8086:643e`, driver 32.0.100.5540, compiler 8.3, Python 3.12, Torch 2.14.1+cpu. See [release validation](RELEASE_READINESS.md) for the cumulative checkout's offline and real-NPU checks and the reused-host-component boundary.
 
-**Upgrading from v0.1.0 requires rebuilding host components with `build_npu.ps1`.** Do not mix the new Python source with old DLL/PYD files. SHAVE source/ELF/assembly provenance is included; model weights, environments, tools, host binaries and driver-generated graph blobs are excluded. There is no wheel release. See [INSTALL.md](INSTALL.md).
+From v0.2.0, update the complete source snapshot and restart Python. Native sources, kernel files, requirements and host ABI are unchanged; matching v0.2.0 host components can be reused. First installation and upgrades from v0.1.0 still require the build procedure in [INSTALL.md](INSTALL.md). No wheel or model weights are distributed.
 
-## Known limitations
+This release preserves the earlier tags and commits. The GitHub source archives contain source, licensed source-backed kernel companions, provenance and Markdown reports; they exclude environments, toolchains, host binaries and driver-generated graph data. Run `python -B tools/export_source_release.py --verify .` before creating local build outputs.
 
-- This provides an `intel_npu` PyTorch device; it is not a CUDA runtime/PTX replacement and is not merged into `torch.xpu`.
-- Ordinary FP16 matmul still uses the generic SHAVE path; frozen DPU adapters are a separate execution route. Reported kernel/model timings are not chip peak throughput or general training speedups.
-- FP16/AMP training remains bounded by tested models/configurations. Higher-order gradients, arbitrary in-place/view semantics, broad optimizer modes, serialization/compile integration and long-term training are incomplete.
-- W8 correction retains 16 historical quality failures. New calibration candidates did not beat the existing internal selection. INT4/NF4 whole-model quality and generic low-bit training are not certified.
-- The Smol adapter retains a 64-position KV capacity. Blockwise attention/NestedTensor support is experimental and does not cover arbitrary masks, dropout, layouts or training configurations.
-- Graph-family retirement is a tested workaround with extra compilation cost. The underlying partial-teardown fault has not been conclusively attributed to the Windows driver or native session layer.
-- Effective asynchronous streams/events, multi-device/distributed execution and GPU+NPU collaboration are not implemented.
+## Remaining limits
 
-Full contracts and per-stage evidence are in [COMPATIBILITY.md](COMPATIBILITY.md) and the linked reports. Sources and adapted algorithms are attributed in [REFERENCES.md](REFERENCES.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), NOTICE and LICENSES.
+- This is an `intel_npu` device, not a CUDA runtime/PTX replacement or an addition to `torch.xpu`.
+- Four-bit frozen inference does not provide four-bit training, QLoRA, arbitrary checkpoint import or general Hugging Face migration. New modes are validated only at the reported shapes and KV lengths; their free generation, PPL and grouped decode are not certified.
+- Existing W8 calibration still has quality failures. Historical 16-position failures and the original model-quality limits are not removed by this release.
+- General autograd/layout mutation, higher-order gradients, long-term AMP training, broad optimizer modes and serialization/compile integration remain incomplete.
+- Smol KV capacity remains 64 positions. Blockwise attention/NestedTensor support is experimental.
+- The native partial-teardown root cause remains unresolved; graph-family retirement and cache budgets retain their documented costs and limits.
+- Asynchronous streams/events, distributed execution, GPU+NPU collaboration and arbitrary 14 GiB training remain uncertified or unimplemented.
+
+Full contracts are in [COMPATIBILITY.md](COMPATIBILITY.md). Numerical studies: [S46 loss fix](npunlock-probe/research/results/loss-source-versions/REPORT.md), [S59 closeout](npunlock-probe/research/results/w8-native-down-check/REPORT.md), and [S60 four-bit execution](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md). Attribution remains in [REFERENCES.md](REFERENCES.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), NOTICE and LICENSES.
 
 ---
 
-本版集中发布v0.1.0以来的兼容性、容量、训练接口、Attention、模型与缓存改进，仍为实验预览版。从旧版升级需重新构建宿主组件。低位16处质量失败、原生生命周期根因、异步与GPU＋NPU协同等问题仍保留，不宣称通用CUDA兼容、完整低位整网或训练加速。详细验收、云端CI状态和限制见上述链接。
+本预览集中纳入v0.2.0之后的损失版本检查修复、四位解码器入口和研究报告，保留原提交历史。四位执行通过不等于整网质量通过；INT4/NF4本轮均0/257，FP16为257/257。已有匹配的v0.2.0宿主组件可复用，首次安装／v0.1升级仍须构建。尚不承诺通用CUDA兼容、低位训练、训练加速或GPU＋NPU协同。

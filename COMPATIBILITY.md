@@ -1,13 +1,13 @@
 # 算子、模型与运行时兼容性
 
-状态日期：2026-10-27，v0.2.0 Experimental Preview（纳入截至S45的累计改进）。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
+状态日期：2026-10-30，v0.3.0-alpha.1 Experimental Preview，累计纳入截至S60的实现和研究记录。适用范围为 Windows x64、Core Ultra 7 258V、NPU `8086:643e`、
 驱动 `32.0.100.5540`、图编译器 `8.3`、Torch `2.14.1+cpu`。
 这是当前实现和有限测试覆盖的清单，不表示所有形状、参数和组合均已验证。
 
 设备名为 `intel_npu:0`。普通 ATen 后端与冻结 DPU 适配器是两条独立入口；
 后者的矩乘/模型支持不能自动推广到 `.to("intel_npu")` 或通用 `torch.compile`。
 安装方式见 [INSTALL.md](INSTALL.md)，性能口径见[中文首页](README.zh-CN.md#性能实测)。
-下文阶段记录中的“本地开发版”或“未发布”保留当时的验证语境；相应源码已纳入v0.2.0，支持范围仍以各项检查和限制为准。
+下文阶段记录中的“本地开发版”或“未发布”保留当时的验证语境；截至S45纳入v0.2.0，S46–S60纳入本预览；支持范围仍以各项检查和限制为准。
 
 ## 状态与证据
 
@@ -82,6 +82,129 @@
 | S43 | [torch_npu_flash_optimization_demo.py](torch_npu_flash_optimization_demo.py)及S42回归 | SHAVE常规算术热路径、FP32次正规数前反向、自动32/128或容量受限分块；预热/冷调用、math对照与边界见[报告](npunlock-probe/research/results/flash-optimization/REPORT.md) |
 | S44 | [w8_lowrank_quality.py](npunlock-probe/research/w8_lowrank_quality.py)及[审计](npunlock-probe/research/w8_lowrank_audit.py) | 可选W8＋FP16低秩修正、30层整网、固定独立回归/NLL/PPL/自主生成；尚未通过全部质量门槛，见[报告](npunlock-probe/research/results/w8-lowrank-quality/REPORT.md) |
 | S45 | [缓存生命周期](npunlock-probe/research/results/smollm-cache-lifetime/REPORT.md)及[低位诊断](npunlock-probe/research/results/w8-guarded-quality/REPORT.md) | 因子缓存身份、Smol同族失效重建、分组计划预算保护及公开budget setter；真实KV复现原16个失败，新增128位置前向及FP16控制；新校准候选未采用 |
+| S46 | [损失版本检查](torch_npu_loss_extended_demo.py)的--case versions | 分类损失布局复制后的来源版本、不同rank的CPU复制策略、跨packet与训练回归；见[报告](npunlock-probe/research/results/loss-source-versions/REPORT.md) |
+| S47 | [W8逐层诊断](npunlock-probe/research/w8_layerwise_quality.py) | 30层/210投影、内部单层/投影FP16保护及独立CPU/NPU/KV对照；候选退化不采用，见[报告](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md) |
+| S48 | [量化前缀与输出校准](npunlock-probe/research/w8_output_quality.py)及[文本评测](npunlock-probe/research/w8_output_language.py) | 8种候选、独立CPU/NPU前向/KV/PPL/生成；候选未稳定改善不采用，见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md) |
+| S49 | [设备数值诊断与内筛](npunlock-probe/research/w8_device_quality.py) | 五层同输入down链、九配置/FP16的真实NPU内筛、冻结选择后独立前向/KV；结果及边界见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md) |
+| S50 | [门控拆分](npunlock-probe/research/w8_gate_quality.py)及[原型](npunlock-probe/research/w8_gate_experiment.py) | forward/decode的gate/up/SiLU同输入隔离及SHAVE激活内部对照；局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md) |
+| S51 | [scale联合校准](npunlock-probe/research/w8_scale_quality.py)及[共享输入诊断](npunlock-probe/research/w8_scale_audit.py) | 固定INT8 codes／rank32，局部SSE下降但整网未晋级；输入敏感峰值及候选拒绝处理见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md) |
+| S52 | [Attention分段诊断](npunlock-probe/research/w8_attention_quality.py)及[原型](npunlock-probe/research/w8_attention_experiment.py) | 26输出／213项精确分段控制；FP32 softmax局部改善但整网未晋级，见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md) |
+| S53 | [真实设备Q/K/V校准](npunlock-probe/research/w8_qkv_quality.py) | 固定rank32输出因子、32条校准／8条内部筛选；部分整网指标改善但未晋级，见[报告](npunlock-probe/research/results/w8-qkv-quality/REPORT.md) |
+| S54 | [整网logits／KL拟合](npunlock-probe/research/w8_logits_quality.py) | 两轮既有输出因子拟合、冻结后新提示NPU对照；通过数略增但最大误差退化，见[报告](npunlock-probe/research/results/w8-logits-quality/REPORT.md) |
+| S55 | [高误差整批校准](npunlock-probe/research/w8_tail_quality.py)及[CPU对照](npunlock-probe/research/w8_tail_audit.py) | 校准改善但三组NPU未晋级；新增高KL反例、CPU／NPU分歧与精度拒绝记录，见[报告](npunlock-probe/research/results/w8-tail-quality/REPORT.md) |
+| S56 | [真实NPU校准选择](npunlock-probe/research/w8_native_selection.py) | 六个固定混合与设备预算、冻结候选及独立诊断；校准改善但原晋级拒绝，新提示局部守卫待定位，见[报告](npunlock-probe/research/results/w8-native-selection/REPORT.md) |
+| S57 | [末层分段诊断](npunlock-probe/research/w8_final_layer_audit.py)及[down尾图对照](npunlock-probe/research/w8_final_layer_down.py) | 复现SiLU峰值和候选的解压权重舍入边界，CPU上传激活对照排除残余差异；局部反事实未推广为整网修复，见[报告](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md) |
+| S58 | [FP16解压代理试点](npunlock-probe/research/w8_decode_proxy.py) | 实际NPU down输入、两个固定单层拟合与新提示；局部误差预测更接近设备，整网仍未晋级，见[报告](npunlock-probe/research/results/w8-decode-proxy/REPORT.md) |
+| S59 | [native-main拟合收尾](npunlock-probe/research/w8_native_down_check.py) | 主代理逐项匹配仍未提升内部通过数，结束单层校准方向，见[报告](npunlock-probe/research/results/w8-native-down-check/REPORT.md) |
+| S60 | [INT4/NF4解码器验收](npunlock-probe/research/smollm_lowbit_coverage.py) | 显式30层前向与有限KV，区分本格式执行正确性和原模型质量，见[报告](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md) |
+
+## S46 分类损失的原始Tensor版本保护（v0.2.0之后）
+
+CE、NLL及原生nll_loss2d_forward补齐布局复制后的原始Tensor版本保护：4D非连续硬标签及其共享storage别名被修改时，反向按本机CPU行为拒绝；空间NLL还保留4D原始输入以及其他空间rank的连续原始输入版本。3D/5D复制非连续源后的接受行为与CPU一致，不一律增加拒绝。重复retain_graph反向继续检查版本，no_grad入口保持原行为。
+
+共享检查只保存PyTorch原始Tensor引用，在相关反向计算前解包触发版本检查；不新增设备计算、CPU payload回退或SHAVE/宿主构建。仍仅承诺已覆盖的一阶路径，不提供任意view原地写入或高阶梯度。FP16/FP32真机、跨NLL packet与训练回归见[报告](npunlock-probe/research/results/loss-source-versions/REPORT.md)。
+
+## S47 W8逐层质量诊断（v0.2.0之后的研究）
+
+新增30层/210投影误差定位，区分相同输入的局部误差、前缀传播和非线性交互；内部8条/290位置筛选30种整层和7种单投影FP16保护。第25层整层保护虽在内部246→250/290，独立NPU前向历史126→125/142、新集合113→111/128，原失败轨迹KV82→81/98，故不采用。210个投影的rank32局部误差均降低，但跨层累积及整网门槛仍未解决；去均值仅作诊断。
+
+五个最终真机进程15,390次提交均正常关闭，FP16前向270/270通过；没有生产后端、内核、默认参数、依赖或原生构建变化。复现、原16个失败位置及边界见[报告](npunlock-probe/research/results/w8-layerwise-quality/REPORT.md)。INT4/NF4整网、PPL与自由生成未新增认证。
+
+## S60 INT4/NF4解码器入口与主线模型覆盖
+
+`FrozenSmolLayer`／`FrozenSmolStack.from_checkpoint`新增`w4a16`、`nf4a16`，默认group32；也可提供格式／形状匹配的完整`PackedWeight`字典。保持FP16输入、输出和KV，压缩常量在图内解压后进入FP16 DPU，并非原生INT4/NF4乘加或低位训练。原FP16/W8默认与参考保持，FP16保护和rank32修正仍只用于W8。
+
+NF4单行投影在图内补至32行后裁回，避开8.3编译器的`LowFpType or levels attribute should has value`失败；公开token、attention和KV形状不扩大。图检查按格式要求DPU证据，W8仍必须有INT8矩阵任务，四位解压路径必须有FP16矩阵任务。新增模式绕过仅适用于FP16/W8的磁盘快捷缓存，仍使用现有内存图缓存。
+
+本机B1/S64的30层teacher-forced前向，以及8-token prefill和第9个token decode分别认证；旧KV快照不变。局部参考明确使用实际四位权重的FP16解压值，沿用L2<0.003、scaled max<0.01；原模型质量仍以独立原权重teacher的raw logits L2<0.03、KL<0.02判断。两类检查不可互换，当前简单四位量化未达整网质量门槛。
+
+NF4默认512MiB缓存会发生LRU淘汰和热路径重编译；输出及90项局部检查通过，原记录中的缓存复用断言未通过。完整热路径验收用显式1GiB图预算，生产默认未改。不是吞吐／内存优势认证，尚未覆盖新模式的自由生成、PPL、grouped decode、其他batch／长度、通用Hugging Face迁移或训练。后续按真实模型缺口推进，不再无限追加单层校准分支。见[报告及用法](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)。
+
+## S59 单层校准方向收尾
+
+最后一次固定native-main末层down拟合使主代理与NPU输出逐项一致、局部SSE下降约4.96%，但三组内部仍243/290且新候选最大KL更差。原规则保留baseline，不做新提示晋级；结束这条单层拟合方向。4个进程2686次提交、120项局部检查及4项观测／绑定控制通过并健康关闭，无新生产默认；详见[报告](npunlock-probe/research/results/w8-native-down-check/REPORT.md)。
+
+## S58 FP16解压拟合代理与末层down试点
+
+在原48条校准轨迹的3072行真实NPU down输入上，对照精确code×scale与显式FP16解压代理。新代理主投影相对L2降低59.17%，基线局部SSE预测偏差22.18%→0.60%；但一致比例86.66%→56.22%，scaled max上升，不是DPU逐位模拟，不替换原独立参考。
+
+两种固定alpha=0.5的rank32输出因子拟合仅改变末层down的18,432个系数，其他209因子、所有输入基和packed权重不变。实际局部校准SSE下降4.9790%／4.9321%，内部均243/290且平均L2变差，新代理最大KL也升高；原规则保留baseline。内部择优的exact-a50在八条新提示234→233/260，decoded-a50本轮未做新提示NPU验收，不将该结果归为解压收益。
+
+6个正式进程3,346次提交及180项已执行局部检查通过；另一次重复记录字段错误在健康关闭后修复重跑，额外1,600次提交。七个实际进程均健康关闭，374项完整工作区离线检查通过，228份fixture及16份旧身份未变。无生产后端、内核、依赖、原生构建或精度门槛变化；INT4/NF4等整网质量范围未扩展。见[报告](npunlock-probe/research/results/w8-decode-proxy/REPORT.md)。
+
+## S57 末层SiLU与权重解压舍入诊断
+
+基线和S56固定旧候选在zipper的(0,61,17)坐标均原样复现0.5差异；固定顺序重放在SiLU阶段引入该差值。SHAVE激活／乘法将基线scaled max由0.0106282降至0.0047944，但候选仍0.0102929。对照提示保持通过，未放宽原0.003／0.01局部守卫。
+
+上传CPU精确激活乘积后，候选仍失败：同输入down main的NPU／精确权重／FP16解压权重结果为-583.5／-584.0／-583.5，低秩delta相同，残差565.0抵消后成为-18.5／-19.0。这是特定输入／坐标上的证据，整个矩阵仍有差异；不能据此归因所有模型误差或宣称已修复候选。下一步优先让拟合代理模拟FP16解压，独立teacher、原守卫与默认维持。
+
+4个正式诊断进程3,260次提交均健康关闭；120项原局部检查118通过、两项拒绝完整记录，54项切图／观测／参考控制逐项相同。364项完整工作区离线检查通过，228份fixture和12份旧身份不变。无生产后端、内核、依赖、原生构建或新整网质量分数，INT4/NF4范围未扩展。见[报告](npunlock-probe/research/results/w8-final-layer-audit/REPORT.md)。
+
+## S56 真实NPU校准选择与新提示守卫
+
+六个预先固定的既有rank32输出因子混合方案，在48条／1,657位置的真实NPU输出上选择；原INT8编码、scale、输入基、参数字节和推理图结构不变。用同一目标与逐位置NPU基线预算，最佳tail-e2-a100将目标降低8.60%，通过1604→1622/1657；选择及七份校准记录哈希在内部／回归／新提示前冻结。
+
+原内部晋级仍拒绝：243/290不变、最大KL升高、token一致数下降，最终保留baseline。16条已查看回归491→487/528；新8条的首条zipper在基线／候选末层scaled max为0.0106282／0.0102929，均越原0.01守卫，因此没有有效的NPU 268位置分数。CPU新集238→232/268也退化，既有校准泛化问题，也有待定位的局部边界；不能只归因驱动。
+
+13个正式NPU进程11,250次提交，10个完整完成、3个精度拒绝，全部健康关闭；390项局部检查387通过。354项完整工作区离线检查通过，228份fixture及9份旧身份未变。仅新增研究／测试与报告，无生产后端、内核、依赖或原生构建变化；INT4/NF4、KV、PPL及自由生成范围未扩展。见[报告](npunlock-probe/research/results/w8-native-selection/REPORT.md)。
+
+## S55 高误差约束与校准泛化
+
+使用48条校准提示，固定INT8编码／scale和rank32输入基；最终拟合全部210个既有输出矩阵（4,976,640参数），保持Half前向。目标增加top10% L2／KL及逐位置baseline超额惩罚；整批梯度、实际校准分数回溯使两次目标下降1.64%／9.26%，不作为NPU收益证明。
+
+tail-e1在末层scaled max=0.010120984触发原0.01守卫，未继续给出整网质量；tail-e2完整执行但内部仍243/290、最大KL升高，原规则保留baseline。冻结后S54回归246→245/262，新八条提示245→242/266。新提示shadow/62的量化CPU／NPU基线KL约0.034，均越过0.02，且不位于生成EOS后段；存在模型／校准泛化缺口，不能只归因驱动。
+
+7个正式NPU进程共2,070次提交，6个完整完成、1个按原精度规则拒绝，7个均健康关闭；210项局部检查中209通过。340项完整工作区离线检查、另6组CPU整网审计完成，228份fixture及7份旧身份未变。推理仍30次预热提交，无生产后端／内核／依赖变化；未扩展INT4/NF4、KV、PPL／生成或长训练范围。详见[报告](npunlock-probe/research/results/w8-tail-quality/REPORT.md)。
+
+## S54 整网输出目标与新提示验证
+
+仅在CPU可微参考中拟合90个Q/K/V rank32输出因子，共921,600个master参数；前向逐次Half舍入，INT8编码／scale、输入基及其余权重固定。校准目标包含原FP16整网raw logits L2、teacher KL及高L2位置约束；初始高步长仅依据校准结果淘汰，最终两轮目标下降3.60%／8.77%，不当作NPU质量结论。
+
+内部NPU第二轮通过243→244/290，均值L2下降，但最大KL升高，原规则保留baseline；候选冻结后，新八条提示通过246→248/262、平均L2略降，最大L2和KL却升高，token一致数未变。新样本没有参与拟合或候选重排；只认证有限teacher-forced前向，不新增PPL／生成、KV或INT4/NF4范围。
+
+5个正式NPU进程共1,650次提交均健康结束，150项原局部检查、326项完整工作区离线检查通过；预热整网仍30次提交，无新增推理算子。228份fixture与9份旧身份未变，生产默认、内核及依赖不变。后续需要约束少数高误差位置并另备独立样本；复现与边界见[报告](npunlock-probe/research/results/w8-logits-quality/REPORT.md)。
+
+## S53 真实NPU Q/K/V输出校准
+
+使用原32条校准轨迹的真实NPU前缀、主投影及低秩中间值，目标为同输入原FP16投影；只拟合90个Q/K/V矩阵的rank32输出因子，编码、scale、输入基、参数量与执行图不变。三种固定blend使校准CPU代理SSE下降0.162%／0.277%／0.364%，不等同于整网收益。
+
+0.50强度的内部平均logits L2由2.041913%降至2.016721%，最大L2／KL下降，token一致286→287；但通过数243→241/290。1.00强度仍243/290，平均L2／最大KL略升，原规则冻结选择baseline。所有配置仍30次预热提交，默认及门槛不变。
+
+5个正式NPU进程共6,180次提交均健康关闭；1,920项精确图控制、120项局部检查和315项完整工作区离线检查通过，228份fixture未改。没有新独立前向、KV、PPL／生成、INT4/NF4或训练认证。下一轮应直接研究整网输出目标，并用新的独立样本验证；范围与复现见[报告](npunlock-probe/research/results/w8-qkv-quality/REPORT.md)。
+
+## S52 Attention分段诊断与FP32 softmax原型
+
+已知末层坐标在固定顺序有符号重放中，Q/K/V投影和softmax各贡献-0.1875，合计-0.375；该归因只针对一个坐标、相同W8参数参照且依赖替换顺序，不代表整网量化误差比例。真实NPU FP32 softmax将focus整层scaled max由0.013540070降至0.007103981；8个交叉设置L2均下降，但scaled max有2处上升。
+
+完整30层／8条内部轨迹的通过数243→242/290，平均L2略降而最大L2／KL升高；原晋级规则选择baseline。预热提交30→240，单次诊断计时不作为正式性能基准。4个正式NPU进程共9,073次提交均健康关闭，213项图／分段精确控制、305项完整工作区离线检查通过；228份fixture和旧运行组件指纹保持原值。
+
+生产默认、参数、内核及预算未改；未新增独立/PPL/生成、KV原型或INT4/NF4认证。后续优先使用真实NPU Q/K/V输出进行校准，并以原FP16整网质量为最终目标。复现与局部／整网参照边界见[报告](npunlock-probe/research/results/w8-attention-quality/REPORT.md)。
+
+## S51 W8 scale校准与输入敏感精度边界
+
+固定INT8 codes与rank32，两个方案仅改gate/up或全部FFN的scale／补偿；90个投影校准SSE合计下降0.889%，但真实NPU内部通过243→242/290，全FFN方案在第30层被原局部门槛拒绝。两次拟合参数逐字节相同，内部结果和拒绝点复现。选择器现能排除已知的局部拒绝，未知错误与不健康设备仍中止研究。
+
+三个末层共享同一实际候选前缀时，最坏坐标均为actual=-5.9375、reference=-5.5625；有符号边界重放将此处-0.375差值定位到attention残差经FFN的传播。单独FFN同输入scaled max约0.003527，整层约0.01354；SHAVE SiLU没有消除峰值。本例没有认定具体内核错误或放宽原门槛，下一步仍需区分attention内部阶段。
+
+8个正式NPU进程共1,839次提交，全部健康关闭，其中2个按原精度门槛拒绝候选；293项本地离线检查通过。120组图结构／常量区控制与228份fixture身份通过，无生产后端、内核、依赖或原生构建变化；本轮未进行独立/PPL/生成认证，未新增INT4/NF4。详见[报告](npunlock-probe/research/results/w8-scale-quality/REPORT.md)。
+
+## S50 gate/up/SiLU拆分与严格激活原型
+
+在内部两条轨迹、五层、forward与第64步decode上分离gate/up投影、SiLU及乘法，共20个同输入取样。gate/up传播与SiLU局部差异量级相近，乘法更小；导出图/普通FFN/融合层及down控制尾段均在取样中逐项相等。不能将全部门控差异归因于SiLU或直接认定驱动错误。
+
+已有SHAVE FP32 SiLU及设备乘法原型使20处局部FFN误差均下降；内部通过243→246/290，但最大KL0.0040497→0.0041673，未满足预设不劣化规则（两者仍低于原0.02门槛）。预热提交30→660，不采用为默认。4个正式进程7,130次提交正常关闭，281项本地离线检查通过；未新增生产代码、SHAVE内核、依赖或原生构建。候选未晋级，本轮未做独立/PPL/生成认证。方法与边界见[报告](npunlock-probe/research/results/w8-gate-quality/REPORT.md)。
+
+## S49 设备数值诊断与NPU内部筛选
+
+新增真实NPU同输入诊断，固定五层检查主W8、两次低秩GEMM及相加；两次低秩矩乘误差约0.00009%–0.00074%，相加和普通FFN/融合层输出在本取样中逐项相等。门控输入和主W8投影差异更大，尚未分离gate/up/SiLU来源，不能直接宣称其中某项有错误。
+
+九种既有配置及FP16控制各在独立NPU进程评测8条/290个内部位置；设备选择仍为input-local（基线243→246/290），独立前向和KV复现S48有限收益与退化，不采用为默认。16个进程18,500次提交正常关闭，272项本地离线检查通过。没有生产代码、内核、默认参数、依赖或原生构建变化；文本证据仅引用相同哈希候选的S48结果，本轮未重跑PPL。协议、限制和复现见[报告](npunlock-probe/research/results/w8-device-quality/REPORT.md)。
+
+## S48 W8量化前缀与输出校准研究
+
+新增down实际量化输入校准、整块输出残差回归及固定低秩输入基回归，共8种候选，32条/2048行拟合、8条/290位置内部选择。整块方案在内部退化；最佳input-local在独立NPU前向多通过1处但平均/最大误差及KL变差，KV仍82/98，PPL28.037196→28.041923，八条生成与基线相同，故不采用。实际校准输入来自CPU精确W8参考；真实NPU用于独立验收，尚非设备激活校准。
+
+7个正式真机进程44,130次提交正常关闭，265项本地离线检查通过；没有生产后端、内核、默认配置、依赖或原生构建变化。数学方法、固定协议、数值对齐边界及复现见[报告](npunlock-probe/research/results/w8-output-quality/REPORT.md)。INT4/NF4整网及低位训练本轮未扩展。
 
 ## S45 缓存保护及低位边界
 
@@ -228,7 +351,7 @@ S32阶段冻结DPU/低位模型和矩形GEMM仍pinned，后来由S33补入调用
 
 普通Conv2d输出、原生MHA的score/projection、encoder FFN和多输出纯DMA拼接改用当前134,217,728元素检查；原生Half掩码softmax沿用当前行分块存储上限。实际越过旧容量的输出/梯度、FFN、mask和DMA范围见S31报告；MHA大score只做元数据边界检查，不推导最大attention认证。原生encoder仍是已列推理入口。
 
-连续空间标签现在直接复用contiguous视图，减少副本并保留原标签version；非连续空间标签复制后的原始来源版本追踪仍有缺口。保留卷积窗口/fold、索引/Embedding、排序与selection的浮点元数据及packet界限；每行softmax<=65536、1536张图和单buffer存储不变。许多宽类别行、不同形状或不对齐偏移仍可能触及缓存。没有新增BCE/KL/CTC家族、长期Half收敛或14GiB训练认证。本节替代下文旧分类整批packet及相应稠密工作区容量描述。
+连续空间标签现在直接复用contiguous视图，减少副本并保留原标签version；S46补齐4D复制标签与空间NLL输入的原始版本保护，其他维度保留CPU复制语义。保留卷积窗口/fold、索引/Embedding、排序与selection的浮点元数据及packet界限；每行softmax<=65536、1536张图和单buffer存储不变。许多宽类别行、不同形状或不对齐偏移仍可能触及缓存。没有新增BCE/KL/CTC家族、长期Half收敛或14GiB训练认证。本节替代下文旧分类整批packet及相应稠密工作区容量描述。
 
 ## S30 历史容量与图复用契约（当前以S32为准）
 
@@ -443,7 +566,8 @@ S19额外验收了95参数分割网络和443参数标准两层Transformer的四�
 | `FrozenSmolLayer/Stack` | SmolLM2-135M-Instruct，FP16 / W8A16；显式 prefill/KV/decode；固定 64-position 容量，batch<=8，受工作区约束 | 不支持任意 LLM；不是 Transformers 模型 `.to("intel_npu")` 即可运行，也不是自动 torch.compile 后端 |
 | 本地 `FrozenSmolIO` | 显式CPU FP16 embedding、最终RMSNorm及共享输出矩阵；从BF16/FP16/FP32的canonical tied checkpoint准备权重快照，D576/eps1e-5 | CPU两端辅助入口，与S5有界NPU Embedding不同；不提供CPU fallback、训练或独立lm_head权重支持；尚未发布 |
 | 完整 30 层 FP16 | 历史固定短上下文测试通过，decoder/KV 在 NPU；两端和采样在 CPU | 不代表长上下文、任务质量、训练、功耗或多设备协同已认证 |
-| 完整模型 W8 | 有校准与执行路径，既有独立/连续质量检查未全部通过 | 当前不能作为通用默认精度；INT4/NF4 全模型也未认证 |
+| 完整模型 W8 | 有校准与执行路径，既有独立/连续质量检查未全部通过 | 当前不能作为通用默认精度；四位执行与质量边界见S60 |
+| 完整模型 INT4/NF4 | S60显式SmolLM2-135M 30层前向及8→9-token KV，本格式局部数值检查通过 | 原模型质量未通过；新模式尚无自由生成、PPL、grouped decode或任意模型认证 |
 | 本地实验 `fp16_projections` | 校准W8中显式保留Up/Down原始FP16，真实30层、batch1、64位置融合路径通过129/142个质量检查位置 | 默认关闭、尚未发布；质量仍有限，性能仅限下述实测，不代表AMP或任意保护组合的硬件认证 |
 
 低位与完整模型的详细证据分别见 [INT8](npunlock-probe/research/results/int8/REPORT.md)、
