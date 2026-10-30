@@ -34,8 +34,8 @@
     },
     {
       "path": "COMPATIBILITY.md",
-      "bytes": 128838,
-      "sha256": "e8affc113dd0afe5e4e0baec3f1f7b57b083d48a81cd91e2177fc8551fceff6d"
+      "bytes": 131101,
+      "sha256": "135e0a883ffa5470b7f20cebbd0bb25be936647ccd0703bfc7982e19a2b40833"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -49,8 +49,8 @@
     },
     {
       "path": "INSTALL.md",
-      "bytes": 29039,
-      "sha256": "e3e665c59ec9f7ed7819ce2c8bdec59e978ebc66c968481f7ab1ddfe148149c8"
+      "bytes": 29542,
+      "sha256": "a2ceab626c8ac2070946643e5d0c4781aac391a81a52676c6023b32d605e5987"
     },
     {
       "path": "INSTALLATION_REPORT.md",
@@ -119,13 +119,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 68036,
-      "sha256": "f4745fa7bd426ce427ec70ec69b759cbc5d1dcb5947b35499ed3c94035f61105"
+      "bytes": 69180,
+      "sha256": "c6ee5e4303f319924cefc9fa74064f215480c0cbe2c4a9a6baf5dafb910b8f59"
     },
     {
       "path": "README.zh-CN.md",
-      "bytes": 55654,
-      "sha256": "8c25606952b689c420f629ece19c93f523a1b2bf5a170f08b1c85609cc824620"
+      "bytes": 56646,
+      "sha256": "1bb788730574fed55a59a638a23d7008f6dedb297a79fe6aee2f875174293ef2"
     },
     {
       "path": "REFERENCES.md",
@@ -134,13 +134,13 @@
     },
     {
       "path": "RELEASE_NOTES.md",
-      "bytes": 4387,
-      "sha256": "f37f67bd7d75e697a41f8a451c8cb6b9664d7298d8127475df83a196185ee05d"
+      "bytes": 5781,
+      "sha256": "ada7afe9ad47bc9c7460a2833d024fd313e14bd160344554fefc2ca5db5119b1"
     },
     {
       "path": "RELEASE_READINESS.md",
-      "bytes": 7685,
-      "sha256": "87fbce9576a00de89f4401722e96bd3ef7db68805000231698d4d512dc9c53d5"
+      "bytes": 3967,
+      "sha256": "f8b60d4d322c3ac78a89a9d5d5eac7d653f58075599fcce7aaf3f99b15e93b32"
     },
     {
       "path": "SOURCE_RELEASE_REPORT.md",
@@ -164,8 +164,8 @@
     },
     {
       "path": "WORKSPACE_STORAGE.md",
-      "bytes": 67591,
-      "sha256": "09b608f1e81c583f5f45e530c65278f66d576bfb7e5a9840160402940cb56bfe"
+      "bytes": 70047,
+      "sha256": "d1788c4c9fb3c05fec98dadc06cb152f392d47656c595ce85db5bb4de8ddbf07"
     },
     {
       "path": "build_npu.ps1",
@@ -1263,6 +1263,11 @@
       "sha256": "0e320ca5aef9890c56cc9b11f02d44ff73842a8b59ea3a5bd46b89207f275a6b"
     },
     {
+      "path": "npunlock-probe/research/results/loss-source-versions/REPORT.md",
+      "bytes": 5997,
+      "sha256": "d29264f8d888d3a18eab8d4dca3691bc8ce594a491429d9114d5075127b710e2"
+    },
+    {
       "path": "npunlock-probe/research/results/lowbit-group/REPORT.md",
       "bytes": 8064,
       "sha256": "a368bd808c6344ba7a412b431f5cc5bf23e35f5f428f2e264fd833a584e3ba96"
@@ -1331,6 +1336,11 @@
       "path": "npunlock-probe/research/results/reduction-norm/REPORT.md",
       "bytes": 12608,
       "sha256": "3ab912aa11cf7b86ab01c54dd9f7a6cd383070b0bf16b94f9fe61f87ea4b69bc"
+    },
+    {
+      "path": "npunlock-probe/research/results/release-v0-3-alpha-1/REPORT.md",
+      "bytes": 7187,
+      "sha256": "bf086a46927cefd337b0394bc348999eddcdcfc021494e6681726122d0ed5d23"
     },
     {
       "path": "npunlock-probe/research/results/rmsnorm-b1-fusion/REPORT.md",
@@ -1616,6 +1626,11 @@
       "path": "npunlock-probe/research/results/w8-layer-sensitivity/REPORT.md",
       "bytes": 15674,
       "sha256": "c2009e7cb25a0c39c946151712777dc30ed217dc450b8b409ae339de802c09fa"
+    },
+    {
+      "path": "npunlock-probe/research/results/w8-layerwise-quality/REPORT.md",
+      "bytes": 16584,
+      "sha256": "b1fd29374e5c7c8adb5592e7408253653bb4619c21c2537ea456b922a0dc217d"
     },
     {
       "path": "npunlock-probe/research/results/w8-logits-quality/REPORT.md",
@@ -2251,6 +2266,11 @@
       "path": "npunlock-probe/research/w8_layer_sensitivity.py",
       "bytes": 16903,
       "sha256": "22bd14eec19de798a17a34fa1e0bbc6218f6f66883b9a18d916435bd167bcae5"
+    },
+    {
+      "path": "npunlock-probe/research/w8_layerwise_quality.py",
+      "bytes": 19645,
+      "sha256": "138936cf94d525bd7e618e58ddc2276701bda7e4a8eb0028527404851c2c46a0"
     },
     {
       "path": "npunlock-probe/research/w8_linear_semantics_probe.py",
@@ -4274,8 +4294,8 @@
     },
     {
       "path": "test_torch_npu_losses.py",
-      "bytes": 11800,
-      "sha256": "b239c58e8b1195a765bf6ed226655a56d1bb47dca8a84c655b4036fac93cf77a"
+      "bytes": 17606,
+      "sha256": "4351ad3b01e11ea536bd4c2240024bd73b58b6b7947aabc224eceeafe49b218e"
     },
     {
       "path": "test_torch_npu_lowbit.py",
@@ -4418,6 +4438,11 @@
       "sha256": "e63d7db221e4d545072931dbb5f3a34d669b09eb7f4ffb71b1bb446b4986e4c7"
     },
     {
+      "path": "test_torch_npu_w8_layerwise.py",
+      "bytes": 6436,
+      "sha256": "a32d4c273ebec2f434c8b8e063d1c42dadd9ca846f3d35c3d2c58ee46c4a917a"
+    },
+    {
       "path": "test_torch_npu_w8_logits.py",
       "bytes": 7525,
       "sha256": "7fe701b5be3b2a9623940c3c965e357d49490949498388f1bec8c8135b0773d1"
@@ -4479,8 +4504,8 @@
     },
     {
       "path": "torch_intel_npu.py",
-      "bytes": 223550,
-      "sha256": "433389e1627e8b2b24803a8f50d3e1142565f498102d14ad43fc67ac3f94540e"
+      "bytes": 223676,
+      "sha256": "fbf33413ac5497d5b6f4764360ad658850139a69e04dfc586cc83336d9ec4e30"
     },
     {
       "path": "torch_npu_adamw_demo.py",
@@ -4529,8 +4554,8 @@
     },
     {
       "path": "torch_npu_autograd.py",
-      "bytes": 53118,
-      "sha256": "5ded3982d6a1f2a06c12da8569725b5bd2ecf324b9abc936272df85715aa9337"
+      "bytes": 54047,
+      "sha256": "283f52d7b5939b5c8b79569fc51b7a4cc54495a4aecaf4be713953f7111afe79"
     },
     {
       "path": "torch_npu_b1_fusion_benchmark.py",
@@ -4704,8 +4729,8 @@
     },
     {
       "path": "torch_npu_loss_extended_demo.py",
-      "bytes": 20618,
-      "sha256": "6abdc88ec31a39e95508d19ff108893712abd4d2b32a63ac94764d20ba809be1"
+      "bytes": 24915,
+      "sha256": "ea6953071fc55b60f0aae6b24a21b35b16b926cd2710df83d2f88dfc2eee0430"
     },
     {
       "path": "torch_npu_lowbit.py",

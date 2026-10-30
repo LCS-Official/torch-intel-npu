@@ -9,8 +9,9 @@ Run PyTorch tensor operations, small-network training, and explicitly adapted mo
 Built on [npunlock](https://github.com/hsfzxjy/npunlock), this project provides an `intel_npu` device backend,
 custom SHAVE kernels, DPU graph execution for frozen models, and reuse of buffers, sessions, and compiled graphs.
 
-**Version: v0.2.0 Experimental Preview, dated 2026-10-27.**
-This update includes the compatibility, capacity, AMP, attention and model work through S45. Installation and hardware validation scope are recorded in [release validation](RELEASE_READINESS.md).
+**Version: v0.3.0-alpha.1 Experimental Preview, dated 2026-10-30.**
+This preview includes the S46 classification-loss fix, the S47–S59 numerical studies, and S60 experimental INT4/NF4 decoder execution. See [release notes](RELEASE_NOTES.md) and [release validation](RELEASE_READINESS.md).
+Four-bit execution passes the local numerical checks, while original-model quality remains 0/257 on the reported corpus; FP16 passes 257/257. No new calibration candidate is promoted.
 See [GitHub Releases](https://github.com/LCS-Official/torch-intel-npu/releases) for publication status.
 Offline source tests and real-NPU checks are reported separately from GitHub-hosted CI; see [release validation](RELEASE_READINESS.md) for the current results.
 The project currently targets NPU operator development and model adaptation research; compatibility remains limited compared with general-purpose CUDA/XPU backends.
@@ -20,6 +21,9 @@ The project currently targets NPU operator development and model adaptation rese
 Source-build and hardware validation are documented in [RELEASE_READINESS.md](RELEASE_READINESS.md),
 with version details in [RELEASE_NOTES.md](RELEASE_NOTES.md). See [CONTRIBUTING.md](CONTRIBUTING.md) to report issues or contribute.
 The detailed guides and research reports linked from this overview are currently primarily in Simplified Chinese.
+
+<details>
+<summary>Included development evidence: S46–S60</summary>
 
 **Development update after v0.2.0 — S46:** [classification-loss source-version guards](npunlock-probe/research/results/loss-source-versions/REPORT.md) preserve the tested CPU behavior when layout copies hide mutations of original labels or NLL inputs. This is a Python-only change with no new dependency or kernel rebuild; the published v0.2.0 tag is unchanged.
 
@@ -50,6 +54,8 @@ The detailed guides and research reports linked from this overview are currently
 **Development closeout — S59:** [The last native-output calibration check](npunlock-probe/research/results/w8-native-down-check/REPORT.md) still gives 243/290 internal passes. This closes the isolated last-layer fitting branch; mainline work now targets usable model paths and compatibility.
 
 **Development feature — S60:** [INT4/NF4 decoder execution](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md) adds `mode="w4a16"` and `mode="nf4a16"` to `FrozenSmolLayer`/`FrozenSmolStack`. Packed group-32 weights feed FP16 DPU computation through the complete 30-layer forward and bounded KV paths. Local execution checks and original-model quality checks are reported separately: these simple quantizers do not meet the whole-model quality gates. NF4 single-token projections use internal padding to avoid a driver 8.3 compilation failure; its warm full-stack check needs an explicit 1 GiB graph-cache budget. No new dependencies or native rebuilds.
+
+</details>
 
 S31 improves [loss and operator capacity](npunlock-probe/research/results/operator-capacity/REPORT.md): hard-label CE/NLL tile complete class rows, and multi-packet training recomputes bounded masks instead of retaining a batch-wide dense mask. A million-row NLL uses 43 cached graphs and matches the complete CPU gradient. Ordinary Conv2d outputs, native Transformer dense workspaces, Half masked softmax and multi-output DMA concatenation use current storage checks; the report separates measured cases from implementation limits. Existing kernels are reused without new dependencies or host builds. Included in v0.2.0.
 

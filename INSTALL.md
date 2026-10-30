@@ -1,6 +1,6 @@
 # Windows NPU4000 源码安装
 
-v0.2.0 Experimental Preview：从v0.1.0升级请按下文build_npu.ps1重新构建宿主组件；不要只复制新Python文件后继续使用旧DLL/PYD。以下Sxx是阶段性更新记录，完整版本应以本版源码及兼容性矩阵为准。
+v0.3.0-alpha.1 Experimental Preview：从v0.2.0升级时同步完整源码并重启Python，已匹配的v0.2.0宿主DLL/PYD和SHAVE内核可复用，依赖不变；从v0.1.0升级或首次安装仍按下文build_npu.ps1构建。不要混用不同源码／Torch版本的宿主组件。以下Sxx保留阶段性记录，完整范围见本版发布说明及兼容性矩阵。
 
 v0.2.0之后的S46开发更新仅需同步torch_intel_npu.py和torch_npu_autograd.py并重启Python，现有v0.2宿主组件和SHAVE内核可继续使用，不新增依赖或原生接口。分类损失布局复制后的原始Tensor版本检查范围及复现见[S46报告](npunlock-probe/research/results/loss-source-versions/REPORT.md)。已发布v0.2.0 tag保持原内容。
 

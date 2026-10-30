@@ -9,8 +9,9 @@
 项目基于 [npunlock](https://github.com/hsfzxjy/npunlock)，实现 `intel_npu` 设备后端、自定义 SHAVE 内核、
 冻结模型的 DPU 图执行，以及缓冲区、会话和编译图复用。
 
-**版本：v0.2.0 Experimental Preview，更新于 2026-10-27。**
-本版纳入截至S45的兼容性、容量、AMP、Attention及模型改进；安装与真机验证范围见[发布验收](RELEASE_READINESS.md)。
+**版本：v0.3.0-alpha.1 Experimental Preview，更新于 2026-10-30。**
+本预览纳入S46分类损失修复、S47–S59数值研究，以及S60实验性INT4/NF4解码器入口。见[发布说明](RELEASE_NOTES.md)与[发布验收](RELEASE_READINESS.md)。
+四位执行已通过本格式局部数值检查，但本轮原模型质量仍为0/257，FP16对照257/257；没有新的校准候选升级为默认。
 发布状态见 [GitHub Releases](https://github.com/LCS-Official/torch-intel-npu/releases)。
 离线检查、真实NPU验证与GitHub托管CI分别记录，不互相替代；本次结果见[发布验收](RELEASE_READINESS.md)。
 目前适合 NPU 算子与模型适配研究，尚未达到通用 CUDA/XPU 后端的兼容性。
@@ -19,6 +20,9 @@
 
 本版源码验收见 [发布验收](RELEASE_READINESS.md)，版本正文见 [RELEASE_NOTES.md](RELEASE_NOTES.md)。
 报告问题与贡献请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+<details>
+<summary>本预览纳入的开发证据：S46–S60</summary>
 
 **v0.2.0之后的S46开发更新：**[分类损失原始版本保护](npunlock-probe/research/results/loss-source-versions/REPORT.md)，补齐布局复制后原标签及NLL输入被修改时的反向检查，按实测CPU的不同维度复制语义处理。仅修改Python，无新增依赖或内核重建；已发布v0.2.0 tag保持原内容。
 
@@ -49,6 +53,8 @@
 **S59方向收尾：**[最后一次真实NPU输出拟合](npunlock-probe/research/results/w8-native-down-check/REPORT.md)内部仍243/290，结束单层末层校准分支，主线转向实际模型入口与兼容性。
 
 **S60功能扩展：**[INT4/NF4整层与整网执行](npunlock-probe/research/results/smollm-lowbit-coverage/REPORT.md)为 `FrozenSmolLayer`／`FrozenSmolStack` 增加 `mode="w4a16"`／`mode="nf4a16"`。group32压缩权重经解压进入FP16 DPU计算，覆盖30层前向和有限KV；执行数值通过与原模型质量达标分别记录，简单量化仍未通过整网质量门槛。NF4单token投影内部补行避开驱动8.3编译失败，完整栈热路径检查使用显式1GiB图预算。无新增依赖或原生重建。
+
+</details>
 
 S31优化[损失函数与算子容量](npunlock-probe/research/results/operator-capacity/REPORT.md)：硬标签CE/NLL按完整类别行分块，多packet训练不再保存整批稠密mask；百万行NLL仅用43张缓存图，完整梯度与CPU一致。普通Conv2d输出、原生Transformer稠密工作区、Half掩码softmax和纯DMA拼接解除旧容量检查，实际覆盖范围及剩余边界见报告。复用原内核，无新增依赖或宿主构建；已纳入v0.2.0。
 
